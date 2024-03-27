@@ -63,7 +63,7 @@ def select_all_callback(key_suffix: str, options: List[str]) -> Callable:
 def select_graphs(
     st, key_suffix: str, options: List[str], title: str = "Select Graph(s):"
 ) -> List[str]:
-    """Renders a button and a multi-select widget for selecting graphs.
+    """Renders a "Select All" button and a multi-select widget for selecting graphs.
 
     Args:
         st: The Streamlit module.
@@ -74,11 +74,17 @@ def select_graphs(
     Returns:
         A list of selected options.
     """
-    if st.button("Select All", key=f"select_all_{key_suffix}"):
-        select_all_callback(key_suffix, options)()
+
+    def select_all_callback():
+        """The callback is needed so that the button can be placed below the multi-select widget."""
+        st.session_state[f"graph_select_{key_suffix}"] = options
 
     selected_graphs = st.multiselect(
         title, options=options, key=f"graph_select_{key_suffix}"
+    )
+
+    st.button(
+        "Select All", key=f"select_all_{key_suffix}", on_click=select_all_callback
     )
 
     return selected_graphs
