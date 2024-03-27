@@ -10,11 +10,20 @@ from constants import (
     BIG_FIVE_COLUMNS,
     MORAL_FOUNDATIONS_COLUMNS,
     PREDICTIONS_COLUMNS,
+    FLIPPED_DELAY_DISCOUNTING_SCORES,
 )
 from survey import Survey
+from typing import Dict, List, Union
 
 
-def display_grouped_distribution_plot(st, survey: Survey, category):
+def display_grouped_distribution_plot(st, survey: Survey, category: str) -> None:
+    """Displays a grouped distribution plot for a given category within the survey data.
+
+    Args:
+        st: The Streamlit object used to render the plot.
+        survey: The Survey instance containing the survey data and metadata.
+        category: The category for which the grouped distribution plot is to be displayed.
+    """
     category_key = next(
         (
             k
@@ -38,9 +47,17 @@ def display_grouped_distribution_plot(st, survey: Survey, category):
     )
 
 
-def display_individual_vs_community_plot(st, survey: Survey, individual_q, community_q):
-    """Display comparison plots for individual vs. community views."""
+def display_individual_vs_community_plot(
+    st, survey: Survey, individual_q: str, community_q: str
+) -> None:
+    """Displays a plot comparing individual versus community responses for given questions.
 
+    Args:
+        st: The Streamlit object used to render the plot.
+        survey: The Survey instance containing the survey data and metadata.
+        individual_q: The column name for individual responses.
+        community_q: The column name for community responses.
+    """
     plot_type = survey.get_plot_type(individual_q, "histogram")
     individual_data = (
         survey.data[individual_q].str.split(",").explode()
@@ -102,7 +119,14 @@ def display_individual_vs_community_plot(st, survey: Survey, individual_q, commu
     st.plotly_chart(fig, use_container_width=True)
 
 
-def display_group_mean_std_graph(st, survey: Survey, group_name):
+def display_group_mean_std_graph(st, survey: Survey, group_name: str) -> None:
+    """Displays a bar graph of mean scores with standard deviation for a specific group within the survey.
+
+    Args:
+        st: The Streamlit object used to render the plot.
+        survey: The Survey instance containing the survey data and metadata.
+        group_name: The name of the group for which the mean and standard deviation are calculated.
+    """
     category_stats = calculate_category_statistics(survey, group_name)
     categories, means, stds = zip(
         *[(k, v["mean"], v["std"]) for k, v in category_stats.items()]
@@ -137,7 +161,14 @@ def display_group_mean_std_graph(st, survey: Survey, group_name):
     st.plotly_chart(fig, use_container_width=True)
 
 
-def display_predictions_graph(st, survey: Survey, level_name):
+def display_predictions_graph(st, survey: Survey, level_name: str) -> None:
+    """Displays a bar graph of predictions for different levels of a specific category within the survey.
+
+    Args:
+        st: The Streamlit object used to render the plot.
+        survey: The Survey instance containing the survey data and metadata.
+        level_name: The name of the level within a specific category for which predictions are displayed.
+    """
     column_ids = PREDICTIONS_COLUMNS[level_name]
     columns = {
         col: survey.get_title(col)
@@ -179,7 +210,17 @@ def display_predictions_graph(st, survey: Survey, level_name):
     st.plotly_chart(fig, use_container_width=True)
 
 
-def display_standard_plot(st, survey: Survey, selected_column, plot_kwargs={}):
+def display_standard_plot(
+    st, survey: Survey, selected_column: str, plot_kwargs: Dict = {}
+) -> None:
+    """Displays a standard plot for a selected column within the survey data.
+
+    Args:
+        st: The Streamlit object used to render the plot.
+        survey: The Survey instance containing the survey data and metadata.
+        selected_column: The column for which the plot is to be displayed.
+        plot_kwargs: Additional keyword arguments for the plot.
+    """
     plot_type = survey.get_plot_type(selected_column, "histogram")
     fig = None
     if plot_type in ["pie-categorized", "pie"]:
@@ -212,7 +253,17 @@ def display_standard_plot(st, survey: Survey, selected_column, plot_kwargs={}):
         st.plotly_chart(fig)
 
 
-def display_correlation_plot(st, survey: Survey, x_axis_column, y_axis_column):
+def display_correlation_plot(
+    st, survey: Survey, x_axis_column: str, y_axis_column: str
+) -> None:
+    """Displays a scatter plot showing the correlation between two columns within the survey data.
+
+    Args:
+        st: The Streamlit object used to render the plot.
+        survey: The Survey instance containing the survey data and metadata.
+        x_axis_column: The column to be used as the x-axis.
+        y_axis_column: The column to be used as the y-axis.
+    """
     grouped_data = (
         survey.data.groupby(y_axis_column)[x_axis_column]
         .agg(["mean", "std"])
@@ -253,12 +304,22 @@ def display_correlation_plot(st, survey: Survey, x_axis_column, y_axis_column):
 
 def display_side_by_side_plot(
     st,
-    column_key,
+    column_key: str,
     survey: Survey,
     comparison_survey: Survey,
-    datasource,
-    comparison_datasource,
-):
+    datasource: str,
+    comparison_datasource: str,
+) -> None:
+    """Displays a side-by-side histogram plot comparing the same column from two different surveys.
+
+    Args:
+        st: The Streamlit object used to render the plot.
+        column_key: The column key to be compared across surveys.
+        survey: The first Survey instance.
+        comparison_survey: The second Survey instance to compare against.
+        datasource: The name of the first data source.
+        comparison_datasource: The name of the second data source.
+    """
     column_title = survey.get_title(column_key)
     if survey.get_scoring(column_key) is not None:
         survey.data = survey.data.replace(SCORING_MAPPING)
@@ -294,7 +355,13 @@ def display_side_by_side_plot(
     st.plotly_chart(fig)
 
 
-def display_delay_discounting_variance(st, survey: Survey):
+def display_delay_discounting_variance(st, survey: Survey) -> None:
+    """Displays a histogram plot of the variance in delay discounting responses within the survey data.
+
+    Args:
+        st: The Streamlit object used to render the plot.
+        survey: The Survey instance containing the survey data and metadata.
+    """
     dd_columns = [
         col
         for col in survey.data.columns
@@ -302,31 +369,8 @@ def display_delay_discounting_variance(st, survey: Survey):
     ]
     dd_df = survey.data[dd_columns]
 
-    flipped_delay_discounting_scores = {
-        "$30 tonight": "0",
-        "$85 in 14 days": "1",
-        "$40 tonight": "0",
-        "$55 in 25 days": "1",
-        "$67 tonight": "0",
-        "$85 in 35 days": "1",
-        "$15 tonight": "0",
-        "$35 in 10 days": "1",
-        "$83 tonight": "0",
-        "$85 in 35 days": "1",
-        "$21 tonight": "0",
-        "$30 in 75 days": "1",
-        "$50 tonight": "0",
-        "$80 in 70 days": "1",
-        "$48 tonight": "0",
-        "$55 in 45 days": "1",
-        "$25 tonight": "0",
-        "$35 in 25 days": "1",
-        "$53 tonight": "0",
-        "$55 in 55 days": "1",
-    }
-
     for col in dd_df.columns:
-        dd_df[col] = dd_df[col].map(flipped_delay_discounting_scores).astype(int)
+        dd_df[col] = dd_df[col].map(FLIPPED_DELAY_DISCOUNTING_SCORES).astype(int)
     variance_values = dd_df.var(axis=1)
 
     fig = px.histogram(
@@ -342,14 +386,25 @@ def display_delay_discounting_variance(st, survey: Survey):
 
 
 def update_layout(
-    fig,
-    title=None,
-    xaxis_title=None,
-    yaxis_title=None,
-    legend_title=None,
-    barmode=None,
-    layout_opts={},
-):
+    fig: go.Figure,
+    title: Union[str, None] = None,
+    xaxis_title: Union[str, None] = None,
+    yaxis_title: Union[str, None] = None,
+    legend_title: Union[str, None] = None,
+    barmode: Union[str, None] = None,
+    layout_opts: Dict = {},
+) -> None:
+    """Updates the layout of a Plotly figure with given titles and options.
+
+    Args:
+        fig: The Plotly figure object to update.
+        title: The title of the plot.
+        xaxis_title: The title of the x-axis.
+        yaxis_title: The title of the y-axis.
+        legend_title: The title of the legend.
+        barmode: The bar mode for bar plots (e.g., 'group', 'overlay').
+        layout_opts: Additional layout options as a dictionary.
+    """
     if title:
         max_length = 100
         if len(title) > max_length:
@@ -377,7 +432,22 @@ def update_layout(
     fig.update_layout(**{k: v for k, v in layout_update.items() if v is not None})
 
 
-def add_standard_error_trace(fig, x_data, y_data, error_data, name="Standard Error"):
+def add_standard_error_trace(
+    fig: go.Figure,
+    x_data: List[float],
+    y_data: List[float],
+    error_data: List[float],
+    name: str = "Standard Error",
+) -> None:
+    """Adds a trace for standard error to a Plotly figure.
+
+    Args:
+        fig: The Plotly figure object to update.
+        x_data: The x data points.
+        y_data: The y data points.
+        error_data: The standard error values.
+        name: The name of the trace.
+    """
     fig.add_trace(
         go.Scatter(
             x=x_data, y=y_data, error_y=dict(type="data", array=error_data), name=name
@@ -385,7 +455,16 @@ def add_standard_error_trace(fig, x_data, y_data, error_data, name="Standard Err
     )
 
 
-def transform_survey_data(survey, category_cols):
+def transform_survey_data(survey: Survey, category_cols: List[str]) -> pd.DataFrame:
+    """Transforms survey data based on specified category columns and scoring.
+
+    Args:
+        survey: The Survey instance containing the survey data and metadata.
+        category_cols: The category columns to transform.
+
+    Returns:
+        A pandas DataFrame with transformed data.
+    """
     transformed_data = pd.DataFrame()
     for col in category_cols:
         transformed_data[col] = pd.to_numeric(survey.data[col], errors="coerce")
@@ -394,8 +473,18 @@ def transform_survey_data(survey, category_cols):
     return transformed_data
 
 
-def calculate_category_statistics(survey: Survey, group_name):
-    """Calculate mean and standard deviation for each trait within the specified group."""
+def calculate_category_statistics(
+    survey: Survey, group_name: str
+) -> Dict[str, Dict[str, Union[float, List[float]]]]:
+    """Calculates mean and standard deviation for each category within a specified group in the survey.
+
+    Args:
+        survey: The Survey instance containing the survey data and metadata.
+        group_name: The name of the group (e.g., "Big Five", "Moral Foundations").
+
+    Returns:
+        A dictionary with category names as keys and dictionaries containing 'mean' and 'std' as values.
+    """
     category_stats = {}
     for col in survey.data.columns:
         question_id = survey.get_question_id(col, "")

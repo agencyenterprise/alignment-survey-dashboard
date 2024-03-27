@@ -3,6 +3,8 @@ from filter_dataframe import filter_dataframe
 from survey import Survey, concat as concat_surveys
 import plots
 import streamlit as st
+import pandas as pd
+from typing import List, Dict, Optional, Callable
 from langchain_community.chat_models import ChatOpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain.agents.agent_types import AgentType
@@ -14,13 +16,17 @@ from constants import (
 
 
 class DatasetType(Enum):
+    """Enum to represent the type of dataset being analyzed."""
+
     ALIGNMENT = "Alignment Researchers"
     EA = "EA"
     COMBINED = "Combined"
     SIDE_BY_SIDE = "Side by Side"
 
 
-class AnalysesType(Enum):
+class AnalysisType(Enum):
+    """Enum to represent the type of dataset being analyzed."""
+
     RAW = "Raw Distribution"
     GROUPED = "Grouped Distribution"
     INDIVIDUAL_VS_GROUP = "Individual vs. Group"
@@ -28,7 +34,7 @@ class AnalysesType(Enum):
     MISCELLANEOUS = "Miscellaneous"
 
 
-MISC_GRAPH_TYPES = {
+MISC_GRAPH_TYPES: Dict[str, Callable] = {
     "Mean Scores for Big Five Traits with Std. Dev.": plots.display_group_mean_std_graph,
     "Mean Scores for Moral Foundations Traits with Std. Dev.": plots.display_group_mean_std_graph,
     "Distribution of Individual Views on Alignment Approaches": plots.display_predictions_graph,
@@ -37,14 +43,37 @@ MISC_GRAPH_TYPES = {
 }
 
 
-def select_all_callback(key_suffix, options):
+def select_all_callback(key_suffix: str, options: List[str]) -> Callable:
+    """Returns a callback function that selects all options in a multi-select widget.
+
+    Args:
+        key_suffix: The suffix to be used for the session state key.
+        options: The options to be selected.
+
+    Returns:
+        A callback function.
+    """
+
     def callback():
         st.session_state[f"graph_select_{key_suffix}"] = options
 
     return callback
 
 
-def select_graphs(st, key_suffix, options, title="Select Graph(s):"):
+def select_graphs(
+    st, key_suffix: str, options: List[str], title: str = "Select Graph(s):"
+) -> List[str]:
+    """Renders a button and a multi-select widget for selecting graphs.
+
+    Args:
+        st: The Streamlit module.
+        key_suffix: The suffix to be used for the session state key.
+        options: The options to be displayed in the multi-select widget.
+        title: The title of the multi-select widget.
+
+    Returns:
+        A list of selected options.
+    """
     if st.button("Select All", key=f"select_all_{key_suffix}"):
         select_all_callback(key_suffix, options)()
 
@@ -55,10 +84,18 @@ def select_graphs(st, key_suffix, options, title="Select Graph(s):"):
     return selected_graphs
 
 
-def get_graphs_for_analysis(analysis_type, survey: Survey):
-    graphs = []
+def get_graphs_for_analysis(analysis_type: str, survey: Survey) -> List[str]:
+    """Determines the appropriate graphs to display based on the analysis type.
 
-    if analysis_type == AnalysesType.GROUPED.value:
+    Args:
+        analysis_type: The type of analysis being performed.
+        survey: The Survey instance containing survey data and metadata.
+
+    Returns:
+        A list of graph titles or descriptions.
+    """
+    graphs = []
+    if analysis_type == AnalysisType.GROUPED.value:
         graphs.extend(
             [
                 f"Overall Distribution for {category_name}"
@@ -75,27 +112,37 @@ def get_graphs_for_analysis(analysis_type, survey: Survey):
             ]
         )
 
-    if analysis_type == AnalysesType.INDIVIDUAL_VS_GROUP.value:
+    if analysis_type == AnalysisType.INDIVIDUAL_VS_GROUP.value:
         for individual_q, community_q in QUESTION_PAIRS.items():
             if individual_q in survey.columns:
                 graphs.append(survey.get_title(individual_q) + " vs. Community View")
-    if analysis_type == AnalysesType.MISCELLANEOUS.value:
+    if analysis_type == AnalysisType.MISCELLANEOUS.value:
         graphs.extend(MISC_GRAPH_TYPES.keys())
 
-    if analysis_type == AnalysesType.RAW.value:
+    if analysis_type == AnalysisType.RAW.value:
         return [survey.get_title(col) for col in survey.columns]
 
     return graphs
 
 
 def display_side_by_side_analysis(
-    survey,
-    datasource,
-    comparison_survey,
-    comparison_datasource,
+    survey: Survey,
+    datasource: str,
+    comparison_survey: Survey,
+    comparison_datasource: str,
     st,
-    key_suffix="",
-):
+    key_suffix: str = "",
+) -> None:
+    """Displays a side-by-side analysis comparing two surveys.
+
+    Args:
+        survey: The first Survey instance.
+        datasource: The name or source of the first survey data.
+        comparison_survey: The second Survey instance to compare against.
+        comparison_datasource: The name or source of the second survey data.
+        st: The Streamlit module.
+        key_suffix: A suffix to differentiate session state keys if necessary.
+    """
     survey.data = filter_dataframe(survey.data, scope=datasource, key_suffix=key_suffix)
     comparison_survey.data = filter_dataframe(
         comparison_survey.data,
@@ -127,10 +174,20 @@ def display_side_by_side_analysis(
         )
 
 
-def display_standard_analysis(survey, datasource, st=st, key_suffix=""):
+def display_standard_analysis(
+    survey: Survey, datasource: str, st=st, key_suffix: str = ""
+) -> None:
+    """Displays the standard analysis for a given survey.
+
+    Args:
+        survey: The Survey instance to analyze.
+        datasource: The name or source of the survey data.
+        st: The Streamlit module.
+        key_suffix: A suffix to differentiate session state keys if necessary
+    """
     survey.data = filter_dataframe(survey.data, scope=datasource, key_suffix=key_suffix)
 
-    all_graphs = [state.value for state in AnalysesType]
+    all_graphs = [state.value for state in AnalysisType]
     graph_types = st.selectbox(
         "Analysis Type:", all_graphs, key=f"graph_type_{key_suffix}"
     )
@@ -143,29 +200,41 @@ def display_standard_analysis(survey, datasource, st=st, key_suffix=""):
 
 
 def handle_analysis_selection(
-    graph_types,
-    survey,
-    st,
-    key_suffix,
-):
-    if graph_types == AnalysesType.CORRELATION.value:
+    graph_types: str, survey: Survey, st, key_suffix: str
+) -> None:
+    """Handles the selection of analysis type and displays the corresponding analysis.
+
+    Args:
+        graph_types: The selected type of analysis to perform.
+        survey: The Survey instance containing the data for analysis.
+        st: The Streamlit module.
+        key_suffix: A suffix to differentiate session state keys if necessary.
+    """
+    if graph_types == AnalysisType.CORRELATION.value:
         display_correlation_analysis(st, survey, key_suffix)
-    elif graph_types == AnalysesType.RAW.value:
+    elif graph_types == AnalysisType.RAW.value:
         display_raw_analysis(
             st,
             survey,
             key_suffix,
         )
     elif graph_types in [
-        AnalysesType.GROUPED.value,
-        AnalysesType.INDIVIDUAL_VS_GROUP.value,
+        AnalysisType.GROUPED.value,
+        AnalysisType.INDIVIDUAL_VS_GROUP.value,
     ]:
         display_grouped_analysis(st, graph_types, survey, key_suffix)
-    elif graph_types == AnalysesType.MISCELLANEOUS.value:
+    elif graph_types == AnalysisType.MISCELLANEOUS.value:
         display_miscellaneous_analysis(st, survey, key_suffix)
 
 
-def display_correlation_analysis(st, survey, key_suffix):
+def display_correlation_analysis(st, survey: Survey, key_suffix: str) -> None:
+    """Displays a correlation analysis between two selected columns from the survey.
+
+    Args:
+        st: The Streamlit module.
+        survey: The Survey instance containing the data for analysis.
+        key_suffix: A suffix to differentiate session state keys if necessary.
+    """
     col1, col2 = st.columns(2)
     with col1:
         x_axis_column = st.selectbox(
@@ -179,8 +248,15 @@ def display_correlation_analysis(st, survey, key_suffix):
     plots.display_correlation_plot(st, survey, x_axis_column, y_axis_column)
 
 
-def display_raw_analysis(st, survey: Survey, key_suffix):
-    direct_columns = get_graphs_for_analysis(AnalysesType.RAW.value, survey)
+def display_raw_analysis(st, survey: Survey, key_suffix: str) -> None:
+    """Displays raw analysis for selected columns from the survey.
+
+    Args:
+        st: The Streamlit module.
+        survey: The Survey instance containing the data for analysis.
+        key_suffix: A suffix to differentiate session state keys if necessary.
+    """
+    direct_columns = get_graphs_for_analysis(AnalysisType.RAW.value, survey)
 
     selected_columns = select_graphs(st, key_suffix, direct_columns)
 
@@ -194,7 +270,17 @@ def display_raw_analysis(st, survey: Survey, key_suffix):
         )
 
 
-def display_grouped_analysis(st, graph_types, survey, key_suffix):
+def display_grouped_analysis(
+    st, graph_types: str, survey: Survey, key_suffix: str
+) -> None:
+    """Displays grouped analysis for selected categories within the survey.
+
+    Args:
+        st: The Streamlit module.
+        graph_types: The selected type of analysis to perform.
+        survey: The Survey instance containing the data for analysis.
+        key_suffix: A suffix to differentiate session state keys if necessary.
+    """
     selected_columns = select_graphs(
         st, key_suffix, get_graphs_for_analysis(graph_types, survey)
     )
@@ -207,11 +293,18 @@ def display_grouped_analysis(st, graph_types, survey, key_suffix):
         )
 
 
-def display_miscellaneous_analysis(st, survey, key_suffix):
+def display_miscellaneous_analysis(st, survey: Survey, key_suffix: str) -> None:
+    """Displays miscellaneous analyses based on the selected analysis type.
+
+    Args:
+        st: The Streamlit module.
+        survey: The Survey instance containing the data for analysis.
+        key_suffix: A suffix to differentiate session state keys if necessary.
+    """
     selected_columns = select_graphs(
         st,
         key_suffix,
-        get_graphs_for_analysis(AnalysesType.MISCELLANEOUS.value, survey),
+        get_graphs_for_analysis(AnalysisType.MISCELLANEOUS.value, survey),
     )
 
     for selected_analysis in selected_columns:
@@ -222,7 +315,14 @@ def display_miscellaneous_analysis(st, survey, key_suffix):
         )
 
 
-def display_selected_plot(st, survey, selected_column):
+def display_selected_plot(st, survey: Survey, selected_column: str) -> None:
+    """Displays the plot for a selected column or analysis type.
+
+    Args:
+        st: The Streamlit module.
+        survey: The Survey instance containing the data for analysis.
+        selected_column: The column or analysis type selected for plotting.
+    """
     if selected_column in MISC_GRAPH_TYPES.keys():
         if selected_column.endswith(" Traits with Std. Dev."):
             group_name = selected_column.split("for ")[1].split(" Traits")[0]
@@ -249,8 +349,12 @@ def display_selected_plot(st, survey, selected_column):
         plots.display_standard_plot(st, survey, selected_column)
 
 
-def initialize_surveys():
-    """Initialize surveys and return them as a dictionary."""
+def initialize_surveys() -> Dict[str, Survey]:
+    """Initializes and returns Survey instances for different datasets.
+
+    Returns:
+        A dictionary mapping dataset names to Survey instances.
+    """
     alignment_survey = Survey.from_file("alignment_data.csv")
     ea_survey = Survey.from_file("ea_data.csv")
     common_columns = list(
@@ -260,12 +364,29 @@ def initialize_surveys():
     return {"Alignment": alignment_survey, "EA": ea_survey, "Combined": combined_survey}
 
 
-def get_survey(surveys, choice):
-    """Return the survey based on the given choice."""
+def get_survey(surveys: Dict[str, Survey], choice: str) -> Optional[Survey]:
+    """Returns the Survey instance based on the user's choice.
+
+    Args:
+        surveys: A dictionary of Survey instances.
+        choice: The user's choice of survey.
+
+    Returns:
+        The selected Survey instance, or None if not found.
+    """
     return surveys.get(choice)
 
 
-def generate_response(survey: Survey, input_query):
+def generate_response(survey: Survey, input_query: str) -> str:
+    """Generates a response using GPT-4 based on the input query and survey data.
+
+    Args:
+        survey: The Survey instance containing the data for analysis.
+        input_query: The user's input query for GPT-4 to process.
+
+    Returns:
+        The response generated by GPT-4.
+    """
     llm = ChatOpenAI(
         model_name="gpt-4-turbo-preview",
         temperature=0.2,
@@ -277,7 +398,13 @@ def generate_response(survey: Survey, input_query):
     return response
 
 
-def handle_gpt4_query(dataframe, st):
+def handle_gpt4_query(dataframe: pd.DataFrame, st) -> None:
+    """Handles user queries and displays responses from GPT-4.
+
+    Args:
+        dataframe: The pandas DataFrame containing the data for GPT-4 to analyze.
+        st: The Streamlit module.
+    """
     query_placeholder = st.empty()
     query_text = query_placeholder.text_input(
         "Enter a query to be answered by GPT-4:",
@@ -289,7 +416,8 @@ def handle_gpt4_query(dataframe, st):
         st.write("GPT-4:", response)
 
 
-def main():
+def main() -> None:
+    """The main function to run the Streamlit application."""
     st.set_page_config(page_title="Data Analysis Dashboard")
     analysis_state = st.radio("Dataset", [state.value for state in DatasetType])
 

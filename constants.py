@@ -170,3 +170,26 @@ ALIGNMENT_QUESTION_PAIRS = {
 }
 
 QUESTION_PAIRS = EA_QUESTION_PAIRS | ALIGNMENT_QUESTION_PAIRS
+
+FLIPPED_DELAY_DISCOUNTING_SCORES = {
+    "$30 tonight": "0",
+    "$85 in 14 days": "1",
+    "$40 tonight": "0",
+    "$55 in 25 days": "1",
+    "$67 tonight": "0",
+    "$85 in 35 days": "1",
+    "$15 tonight": "0",
+    "$35 in 10 days": "1",
+    "$83 tonight": "0",
+    "$85 in 35 days": "1",
+    "$21 tonight": "0",
+    "$30 in 75 days": "1",
+    "$50 tonight": "0",
+    "$80 in 70 days": "1",
+    "$48 tonight": "0",
+    "$55 in 45 days": "1",
+    "$25 tonight": "0",
+    "$35 in 25 days": "1",
+    "$53 tonight": "0",
+    "$55 in 55 days": "1",
+}
