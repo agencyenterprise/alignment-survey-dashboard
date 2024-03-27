@@ -355,32 +355,29 @@ def display_selected_plot(st, survey: Survey, selected_column: str) -> None:
         plots.display_standard_plot(st, survey, selected_column)
 
 
-def initialize_surveys() -> Dict[str, Survey]:
-    """Initializes and returns Survey instances for different datasets.
-
-    Returns:
-        A dictionary mapping dataset names to Survey instances.
-    """
-    alignment_survey = Survey.from_file("alignment_data.csv")
-    ea_survey = Survey.from_file("ea_data.csv")
-    common_columns = list(
-        set(alignment_survey.columns).intersection(set(ea_survey.columns))
-    )
-    combined_survey = concat_surveys([alignment_survey, ea_survey], common_columns)
-    return {"Alignment": alignment_survey, "EA": ea_survey, "Combined": combined_survey}
-
-
-def get_survey(surveys: Dict[str, Survey], choice: str) -> Optional[Survey]:
-    """Returns the Survey instance based on the user's choice.
+def get_survey(choice: str) -> Optional[Survey]:
+    """Returns a new Survey instance based on the user's choice, created on the fly.
 
     Args:
-        surveys: A dictionary of Survey instances.
         choice: The user's choice of survey.
 
     Returns:
-        The selected Survey instance, or None if not found.
+        A new Survey instance based on the choice, or None if the choice is invalid.
     """
-    return surveys.get(choice)
+    if choice == "Alignment":
+        return Survey.from_file("alignment_data.csv")
+    elif choice == "EA":
+        return Survey.from_file("ea_data.csv")
+    elif choice == "Combined":
+        alignment_survey = Survey.from_file("alignment_data.csv")
+        ea_survey = Survey.from_file("ea_data.csv")
+        common_columns = list(
+            set(alignment_survey.columns).intersection(set(ea_survey.columns))
+        )
+        combined_survey = concat_surveys([alignment_survey, ea_survey], common_columns)
+        return combined_survey
+    else:
+        return None
 
 
 def generate_response(survey: Survey, input_query: str) -> str:
@@ -427,8 +424,6 @@ def main() -> None:
     st.set_page_config(page_title="Data Analysis Dashboard")
     analysis_state = st.radio("Dataset", [state.value for state in DatasetType])
 
-    surveys = initialize_surveys()
-
     if analysis_state in [
         DatasetType.ALIGNMENT.value,
         DatasetType.EA.value,
@@ -439,7 +434,7 @@ def main() -> None:
             if analysis_state == DatasetType.ALIGNMENT.value
             else "EA" if analysis_state == DatasetType.EA.value else "Combined"
         )
-        survey = get_survey(surveys, survey_name)
+        survey = get_survey(survey_name)
         display_standard_analysis(survey, analysis_state, st=st, key_suffix="")
 
     elif analysis_state == DatasetType.SIDE_BY_SIDE.value:
@@ -450,9 +445,7 @@ def main() -> None:
         side2_choice = st.selectbox(
             "Choose data for Side 2:", choices, key="side2", index=1
         )
-        survey1, survey2 = get_survey(surveys, side1_choice), get_survey(
-            surveys, side2_choice
-        )
+        survey1, survey2 = get_survey(side1_choice), get_survey(side2_choice)
         display_side_by_side_analysis(
             survey1, side1_choice, survey2, side2_choice, st, key_suffix="side1"
         )
