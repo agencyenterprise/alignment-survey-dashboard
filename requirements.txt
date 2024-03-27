@@ -4,3 +4,4 @@ plotly
 langchain_community
 langchain_experimental
 langchain
+openai
