@@ -11,6 +11,7 @@ from constants import (
     MORAL_FOUNDATIONS_COLUMNS,
     FLIPPED_DELAY_DISCOUNTING_SCORES,
     K_VALUES,
+    PREDICTIONS,
 )
 from survey import Survey
 from typing import Dict, List, Union, Tuple
@@ -120,7 +121,9 @@ def display_predictions_graph(st, survey: Survey, level_name: str) -> None:
         level_name: The name of the level within a specific category for which predictions are displayed.
     """
     column_names = get_prediction_columns(survey, level_name)
-    columns = {col: survey.get_question_id(col) for col in column_names}
+    columns = {
+        col: PREDICTIONS[survey.get_question_id(col)[1:]] for col in column_names
+    }
 
     melted_df = survey.data.melt(
         value_vars=columns.keys(), var_name="Question", value_name="Response"
@@ -140,7 +143,7 @@ def display_predictions_graph(st, survey: Survey, level_name: str) -> None:
         response_counts["Response"], categories=response_order, ordered=True
     )
 
-    title = f"Distribution of {level_name} Views on Alignment Approaches"
+    title = f"Distribution of {level_name} Views"
     fig = px.bar(
         response_counts,
         x="Question",
@@ -622,11 +625,11 @@ def get_category_columns(survey: Survey, category: str) -> List[str]:
 
 def get_prediction_columns(survey: Survey, level_name=None) -> List[str]:
     if level_name == "Individual":
-        category_keys = ["pi"]
+        category_keys = ["iep", "iap"]
     elif level_name == "Community":
-        category_keys = ["pc"]
+        category_keys = ["cep", "cap"]
     else:
-        category_keys = ["pi", "pc"]
+        category_keys = ["iep", "iap", "cep", "cap"]
 
     return [
         col

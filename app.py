@@ -37,8 +37,8 @@ class AnalysisType(Enum):
 MISC_GRAPH_TYPES: Dict[str, Callable] = {
     "Mean Scores for Big Five Traits with Std. Dev.": plots.display_group_mean_std_graph,
     "Mean Scores for Moral Foundations Traits with Std. Dev.": plots.display_group_mean_std_graph,
-    "Distribution of Individual Views on Alignment Approaches": plots.display_predictions_graph,
-    "Distribution of Community Views on Alignment Approaches": plots.display_predictions_graph,
+    "Distribution of Individual Views": plots.display_predictions_graph,
+    "Distribution of Community Views": plots.display_predictions_graph,
     "Distribution of Variance in Delay Discounting Responses": plots.display_delay_discounting_variance,
     "Distribution of k Values (lower = less future discounting)": plots.display_delay_discounting_k_values,
 }
@@ -379,7 +379,7 @@ def display_selected_plot(st, survey: Survey, selected_column: str) -> None:
         if selected_column.endswith(" Traits with Std. Dev."):
             group_name = selected_column.split("for ")[1].split(" Traits")[0]
             plots.display_group_mean_std_graph(st, survey, group_name)
-        elif selected_column.endswith(" Views on Alignment Approaches"):
+        elif selected_column.endswith(" Views"):
             level_name = selected_column.split(" of ")[1].split(" Views")[0]
             plots.display_predictions_graph(st, survey, level_name)
         elif selected_column.endswith(" in Delay Discounting Responses"):

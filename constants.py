@@ -202,3 +202,21 @@ K_VALUES = {
     "delaydiscounting9": {"0": 0, "1": 0.015999999999999997},
     "delaydiscounting10": {"0": 0, "1": 0.0006861063464837048},
 }
+
+PREDICTIONS = {
+    # EA
+    "ep1": "Global health and development",
+    "ep2": "Farmed/wild animal welfare",
+    "ep3": "Existential risk (general)",
+    "ep4": "Biosecurity & pandemics",
+    "ep5": "Philosophical work",
+    "ep6": "AI risk",
+    "ep7": "Fieldbuilding/community development",
+    "ep8": "EA-related policy work",
+    "ep9": "Cause prioritization/effective giving",
+    # Alignment
+    "ap1": "Understand existing models",
+    "ap2": "Control the AI",
+    "ap3": "Make AI solve it",
+    "ap4": "Theory work",
+}
