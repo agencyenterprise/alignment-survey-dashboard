@@ -258,29 +258,21 @@ def plot_single(
     )
 
     if plot_type in ["histogram-categorized", "histogram"]:
+        fig_kwargs = {"histnorm": "percent"}
+        fig_kwargs.update(plot_kwargs)
         if isinstance(data.dtype, pd.CategoricalDtype):
             if not isinstance(data, pd.Series):
                 data = pd.Series(data)
-            # Ensure all categories are represented
             data_counts = data.value_counts().reindex(data.cat.categories, fill_value=0)
             x_values = data_counts.index.tolist()
             y_values = data_counts.values
+            fig = px.histogram(x=x_values, y=y_values, **fig_kwargs)
+            if zoom_to_fit_categories:
+                num_categories = len(x_values)
+                fig.update_xaxes(range=[-0.5, num_categories - 0.5])
         else:
-            data_counts = data.value_counts()
-            x_values = data_counts.index.tolist()
-            y_values = data_counts.values
-
-        fig_kwargs = {"histnorm": "percent"}
-        fig_kwargs.update(plot_kwargs)
-        fig = px.histogram(x=x_values, y=y_values, **fig_kwargs)
+            fig = px.histogram(data, **fig_kwargs)
         fig.update_layout(bargap=0.2, showlegend=False)
-        if zoom_to_fit_categories:
-            num_categories = len(x_values)
-            fig.update_xaxes(range=[-0.5, num_categories - 0.5])
-        fig.update_traces(
-            customdata=data_counts.values,
-            hovertemplate="%{x}: percent=%{y}%, count=%{customdata}<extra></extra>",
-        )
     elif plot_type in ["pie-categorized", "pie"]:
         fig = px.pie(data, names=series_name, **plot_kwargs)
         fig.update_traces(hole=0.4, hoverinfo="label+percent+name")
