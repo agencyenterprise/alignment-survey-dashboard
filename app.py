@@ -40,6 +40,7 @@ MISC_GRAPH_TYPES: Dict[str, Callable] = {
     "Distribution of Individual Views on Alignment Approaches": plots.display_predictions_graph,
     "Distribution of Community Views on Alignment Approaches": plots.display_predictions_graph,
     "Distribution of Variance in Delay Discounting Responses": plots.display_delay_discounting_variance,
+    "Distribution of k Values (lower = less future discounting)": plots.display_delay_discounting_k_values,
 }
 
 
@@ -383,6 +384,8 @@ def display_selected_plot(st, survey: Survey, selected_column: str) -> None:
             plots.display_predictions_graph(st, survey, level_name)
         elif selected_column.endswith(" in Delay Discounting Responses"):
             plots.display_delay_discounting_variance(st, survey)
+        elif selected_column.endswith(" k Values (lower = less future discounting)"):
+            plots.display_delay_discounting_k_values(st, survey)
     elif selected_column.endswith(" vs. Community View"):
         base_title = selected_column.replace(" vs. Community View", "")
         individual_q = next(

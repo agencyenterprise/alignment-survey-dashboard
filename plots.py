@@ -11,6 +11,7 @@ from constants import (
     MORAL_FOUNDATIONS_COLUMNS,
     PREDICTIONS_COLUMNS,
     FLIPPED_DELAY_DISCOUNTING_SCORES,
+    K_VALUES,
 )
 from survey import Survey
 from typing import Dict, List, Union
@@ -405,6 +406,46 @@ def display_delay_discounting_variance(st, survey: Survey) -> None:
         nbins=10,
         title="Distribution of Variance in Delay Discounting Responses",
         labels={"value": "Variance"},
+        histnorm="percent",
+    )
+    fig.update_layout(bargap=0.2)
+
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def display_delay_discounting_k_values(st, survey: Survey) -> None:
+    """Displays a histogram plot of the k values in delay discounting responses within the survey data.
+
+    Args:
+        st: The Streamlit object used to render the plot.
+        survey: The Survey instance containing the survey data and metadata.
+    """
+
+    # Function to calculate the average k value for a participant
+    def calculate_k(row, k_values_dict):
+        ks = [k_values_dict[col]["1"] for col in row.index if row[col] == 1]
+        return (
+            np.mean(ks) if ks else np.nan
+        )  # Return NaN if there are no choices for delayed reward
+
+    dd_columns = [
+        col
+        for col in survey.data.columns
+        if survey.get_question_id(col, "").startswith("delaydiscounting")
+    ]
+    dd_df = survey.data[dd_columns]
+    dd_df.columns = [survey.get_question_id(col, "") for col in dd_df.columns]
+
+    for col in dd_df.columns:
+        dd_df[col] = dd_df[col].map(FLIPPED_DELAY_DISCOUNTING_SCORES).astype(int)
+
+    dd_df["k"] = dd_df.apply(lambda row: calculate_k(row, K_VALUES), axis=1)
+
+    fig = px.histogram(
+        dd_df,
+        x="k",
+        title="Distribution of k Values in Delay Discounting Responses",
+        labels={"k": "k Value"},
         histnorm="percent",
     )
     fig.update_layout(bargap=0.2)

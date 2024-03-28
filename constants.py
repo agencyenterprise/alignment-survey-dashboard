@@ -193,3 +193,16 @@ FLIPPED_DELAY_DISCOUNTING_SCORES = {
     "$53 tonight": "0",
     "$55 in 55 days": "1",
 }
+
+K_VALUES = {
+    "delaydiscounting1": {"0": 0, "1": 0.13095238095238096},
+    "delaydiscounting2": {"0": 0, "1": 0.015},
+    "delaydiscounting3": {"0": 0, "1": 0.007675906183368873},
+    "delaydiscounting4": {"0": 0, "1": 0.13333333333333336},
+    "delaydiscounting5": {"0": 0, "1": 0.0006884681583476786},
+    "delaydiscounting6": {"0": 0, "1": 0.002666666666666666},
+    "delaydiscounting7": {"0": 0, "1": 0.008571428571428572},
+    "delaydiscounting8": {"0": 0, "1": 0.003240740740740739},
+    "delaydiscounting9": {"0": 0, "1": 0.015999999999999997},
+    "delaydiscounting10": {"0": 0, "1": 0.0006861063464837048},
+}
