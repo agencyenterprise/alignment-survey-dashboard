@@ -381,6 +381,7 @@ def plot_side_by_side(
     datasource: str,
     comparison_data: pd.Series,
     comparison_datasource: str,
+    nbins: int = 0,
 ):
     """Plots two histograms side by side for comparison.
 
@@ -391,6 +392,7 @@ def plot_side_by_side(
         datasource: The name of the first series.
         comparison_data: The second series to plot.
         comparison_datasource: The name of the second series.
+        nbins: The number of bins to use for the histogram.
     """
     fig = go.Figure()
     fig.add_trace(
@@ -400,7 +402,7 @@ def plot_side_by_side(
             marker_color="blue",
             opacity=0.75,
             histnorm="percent",
-            nbinsx=10,
+            nbinsx=nbins,
         )
     )
     fig.add_trace(
@@ -410,7 +412,7 @@ def plot_side_by_side(
             marker_color="red",
             opacity=0.75,
             histnorm="percent",
-            nbinsx=10,
+            nbinsx=nbins,
         )
     )
 
@@ -456,6 +458,7 @@ def display_side_by_side_grouped_distribution_plot(
         datasource,
         comparison_data_transformed.mean(axis=1),
         comparison_datasource,
+        nbins=10,
     )
 
 

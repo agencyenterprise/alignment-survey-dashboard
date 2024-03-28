@@ -503,7 +503,7 @@ def main() -> None:
         st.error("Invalid analysis state selected.")
 
     if "survey" in locals() and survey is not None:
-        handle_gpt4_query(survey, st)
+        handle_gpt4_query(survey.data, st)
 
 
 if __name__ == "__main__":
