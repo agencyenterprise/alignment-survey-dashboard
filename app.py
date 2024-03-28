@@ -400,7 +400,7 @@ def display_selected_plot(st, survey: Survey, selected_column: str) -> None:
         category = selected_column.split("for ")[1]
         plots.display_grouped_distribution_plot(st, survey, category)
     else:
-        plots.display_standard_plot(st, survey, selected_column)
+        plots.display_raw_distribution_plot(st, survey, selected_column)
 
 
 def get_survey(choice: str) -> Optional[Survey]:

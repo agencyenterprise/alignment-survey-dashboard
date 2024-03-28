@@ -14,7 +14,7 @@ from constants import (
     K_VALUES,
 )
 from survey import Survey
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Tuple
 
 
 def display_grouped_distribution_plot(st, survey: Survey, category: str) -> None:
@@ -28,10 +28,11 @@ def display_grouped_distribution_plot(st, survey: Survey, category: str) -> None
     category_cols = get_category_columns(survey, category)
     transformed_data = transform_survey_data(survey, category_cols)
     survey.data[category] = transformed_data.mean(axis=1)
-    display_standard_plot(
+    plot_single(
         st,
-        survey,
+        survey.data[category],
         category,
+        "histogram",
         {"nbins": 10, "histnorm": "percent"},
     )
 
@@ -59,53 +60,14 @@ def display_individual_vs_community_plot(
         else survey.data[community_q]
     )
 
-    individual_data = individual_data.value_counts(normalize=True).sort_index() * 100
-    community_data = community_data.value_counts(normalize=True).sort_index() * 100
-
-    if survey.get_scoring(individual_q) is not None:
-        individual_data = individual_data.rename(SCORING_MAPPING)
-        community_data = community_data.rename(SCORING_MAPPING)
-
-    all_categories = individual_data.index.union(community_data.index)
-    individual_data = individual_data.reindex(all_categories, fill_value=0)
-    community_data = community_data.reindex(all_categories, fill_value=0)
-
-    fig = go.Figure()
-    fig.add_trace(
-        go.Bar(
-            x=individual_data.index,
-            y=individual_data,
-            name="Individual",
-            marker_color="blue",
-        )
+    plot_side_by_side(
+        st,
+        survey.get_title(individual_q),
+        individual_data,
+        "Individual",
+        community_data,
+        "Community",
     )
-    fig.add_trace(
-        go.Bar(
-            x=community_data.index,
-            y=community_data,
-            name="Community",
-            marker_color="red",
-        )
-    )
-
-    title = survey.get_title(individual_q)
-    update_layout(
-        fig,
-        title,
-        yaxis_title="percent",
-        legend_title=None,
-        barmode="group",
-        layout_opts={"yaxis": dict(tickformat=",")},
-    )
-
-    if survey.get_scoring(individual_q) is not None:
-        fig.update_layout(
-            xaxis=dict(
-                categoryorder="array", categoryarray=list(SCORING_MAPPING.values())
-            )
-        )
-
-    st.plotly_chart(fig, use_container_width=True)
 
 
 def display_group_mean_std_graph(st, survey: Survey, group_name: str) -> None:
@@ -199,9 +161,45 @@ def display_predictions_graph(st, survey: Survey, level_name: str) -> None:
     st.plotly_chart(fig, use_container_width=True)
 
 
-def display_standard_plot(
-    st, survey: Survey, selected_column: str, plot_kwargs: Dict = {}
-) -> None:
+def format_survey_data_for_plotting(data, scoring, is_prediction) -> pd.Series:
+    """Formats survey data for plotting based on scoring information.
+
+    Args:
+        data: The survey data to be formatted.
+        scoring: The scoring information to be applied.
+        is_prediction: Whether the data corresponds to predictions.
+
+    Returns:
+        The formatted data for the plot.
+    """
+    if scoring is not None:
+        data = data.replace(SCORING_MAPPING)
+        categories = [
+            "Strongly disagree",
+            "Somewhat disagree",
+            "Neutral/agnostic",
+            "Somewhat agree",
+            "Strongly agree",
+        ]
+        data = pd.Categorical(data, categories=categories, ordered=True)
+        data = data.sort_values()
+
+    if is_prediction:
+        categories = [
+            "Very unpromising",
+            "Somewhat unpromising",
+            "Unsure/agnostic",
+            "Somewhat promising",
+            "Very promising",
+        ]
+        # Ensure all prediction categories are present
+        data = pd.Categorical(data, categories=categories, ordered=True)
+        data = data.sort_values()
+
+    return data
+
+
+def display_raw_distribution_plot(st, survey: Survey, selected_column: str) -> None:
     """Displays a standard plot for a selected column within the survey data.
 
     Args:
@@ -210,35 +208,70 @@ def display_standard_plot(
         selected_column: The column for which the plot is to be displayed.
         plot_kwargs: Additional keyword arguments for the plot.
     """
+    data = survey.data[selected_column]
+    scoring = survey.get_scoring(selected_column)
+    is_prediction = selected_column in get_prediction_columns(survey)
     plot_type = survey.get_plot_type(selected_column, "histogram")
-    fig = None
-    if plot_type in ["pie-categorized", "pie"]:
-        data = (
-            survey.data[selected_column].str.split(",").explode()
-            if plot_type == "pie-categorized"
-            else survey.data
-        )
-        fig = px.pie(data, names=selected_column)
-        fig.update_traces(hole=0.4, hoverinfo="label+percent+name")
-    elif plot_type in ["histogram-categorized", "histogram"]:
-        fig_kwargs = {"x": selected_column, "histnorm": "percent"}
-        fig_kwargs.update(plot_kwargs)
-        if survey.get_scoring(selected_column) is not None:
-            survey.data = survey.data.replace(SCORING_MAPPING)
-            fig_kwargs["category_orders"] = {
-                selected_column: list(SCORING_MAPPING.values())
-            }
-        data = (
-            survey.data[selected_column].str.split(",").explode()
-            if plot_type == "histogram-categorized"
-            else survey.data
-        )
+    plot_single(
+        st,
+        format_survey_data_for_plotting(data, scoring, is_prediction),
+        (
+            survey.get_title(selected_column)
+            if plot_type in ["histogram", "histogram-categorized"]
+            else selected_column
+        ),
+        plot_type,
+    )
 
-        fig = px.histogram(data, **fig_kwargs)
-        fig.update_layout(bargap=0.2)
+
+def plot_single(
+    st,
+    data: pd.Series,
+    series_name: str,
+    plot_type: str = "histogram",
+    plot_kwargs: Dict = {},
+) -> None:
+    """Displays a standard plot for a selected column within the survey data.
+
+    Args:
+        st: The Streamlit object used to render the plot.
+        data: The data to be plotted.
+        series_name: The name of the series to be displayed.
+        plot_type: The type of plot to display (e.g., 'histogram', 'pie').
+        plot_kwargs: Additional keyword arguments for the plot.
+    """
+    fig = None
+    data = (
+        data.str.split(",").explode()
+        if plot_type in ["pie-categorized", "histogram-categorized"]
+        else data
+    )
+
+    if plot_type in ["histogram-categorized", "histogram"]:
+        if isinstance(data.dtype, pd.CategoricalDtype):
+            if not isinstance(data, pd.Series):
+                data = pd.Series(data)
+            # Ensure all categories are represented
+            data_counts = data.value_counts().reindex(data.cat.categories, fill_value=0)
+            x_values = data_counts.index.tolist()
+            y_values = data_counts.values
+        else:
+            data_counts = data.value_counts()
+            x_values = data_counts.index.tolist()
+            y_values = data_counts.values
+
+        fig_kwargs = {"histnorm": "percent"}
+        fig_kwargs.update(plot_kwargs)
+        fig = px.histogram(x=x_values, y=y_values, **fig_kwargs)
+        fig.update_layout(bargap=0.2, showlegend=False)
+        num_categories = len(x_values)
+        fig.update_xaxes(range=[-0.5, num_categories - 0.5])
+    elif plot_type in ["pie-categorized", "pie"]:
+        fig = px.pie(data, names=series_name, **plot_kwargs)
+        fig.update_traces(hole=0.4, hoverinfo="label+percent+name")
 
     if fig:
-        update_layout(fig, selected_column, xaxis_title="")
+        update_layout(fig, series_name, xaxis_title="")
         st.plotly_chart(fig)
 
 
@@ -312,14 +345,43 @@ def display_side_by_side_plot(
         comparison_datasource: The name of the second data source.
     """
     column_title = survey.get_title(column_key)
-    if survey.get_scoring(column_key) is not None:
-        survey.data = survey.data.replace(SCORING_MAPPING)
-        comparison_survey.data = comparison_survey.data.replace(SCORING_MAPPING)
+    data = survey.data[column_key]
+    comparison_data = comparison_survey.data[column_key]
+    scoring = survey.get_scoring(column_key)
+    is_prediction = column_key in get_prediction_columns(survey)
 
+    plot_side_by_side(
+        st,
+        column_title,
+        format_survey_data_for_plotting(data, scoring, is_prediction),
+        datasource,
+        format_survey_data_for_plotting(comparison_data, scoring, is_prediction),
+        comparison_datasource,
+    )
+
+
+def plot_side_by_side(
+    st,
+    title: str,
+    data: pd.Series,
+    datasource: str,
+    comparison_data: pd.Series,
+    comparison_datasource: str,
+):
+    """Plots two histograms side by side for comparison.
+
+    Args:
+        st: The Streamlit object used to render the plot.
+        title: The title of the plot.
+        data: The first series to plot.
+        datasource: The name of the first series.
+        comparison_data: The second series to plot.
+        comparison_datasource: The name of the second series.
+    """
     fig = go.Figure()
     fig.add_trace(
         go.Histogram(
-            x=survey.data[column_key],
+            x=data,
             name=datasource,
             marker_color="blue",
             opacity=0.75,
@@ -329,7 +391,7 @@ def display_side_by_side_plot(
     )
     fig.add_trace(
         go.Histogram(
-            x=comparison_survey.data[column_key],
+            x=comparison_data,
             name=comparison_datasource,
             marker_color="red",
             opacity=0.75,
@@ -340,7 +402,7 @@ def display_side_by_side_plot(
 
     update_layout(
         fig,
-        column_title,
+        title,
         yaxis_title="percent",
         legend_title="Dataset",
         barmode="group",
@@ -372,15 +434,13 @@ def display_side_by_side_grouped_distribution_plot(
     comparison_data_transformed = transform_survey_data(
         comparison_survey, category_cols
     )
-    survey.data[category] = survey_data_transformed.mean(axis=1)
-    comparison_survey.data[category] = comparison_data_transformed.mean(axis=1)
 
-    display_side_by_side_plot(
+    plot_side_by_side(
         st,
         category,
-        survey,
-        comparison_survey,
+        survey_data_transformed.mean(axis=1),
         datasource,
+        comparison_data_transformed.mean(axis=1),
         comparison_datasource,
     )
 
@@ -402,17 +462,12 @@ def display_delay_discounting_variance(st, survey: Survey) -> None:
     for col in dd_df.columns:
         dd_df[col] = dd_df[col].map(FLIPPED_DELAY_DISCOUNTING_SCORES).astype(int)
     variance_values = dd_df.var(axis=1)
-
-    fig = px.histogram(
+    plot_single(
+        st,
         variance_values,
-        nbins=10,
-        title="Distribution of Variance in Delay Discounting Responses",
-        labels={"value": "Variance"},
-        histnorm="percent",
+        "Distribution of Variance in Delay Discounting",
+        "histogram",
     )
-    fig.update_layout(bargap=0.2)
-
-    st.plotly_chart(fig, use_container_width=True)
 
 
 def display_delay_discounting_k_values(st, survey: Survey) -> None:
@@ -442,17 +497,12 @@ def display_delay_discounting_k_values(st, survey: Survey) -> None:
         dd_df[col] = dd_df[col].map(FLIPPED_DELAY_DISCOUNTING_SCORES).astype(int)
 
     dd_df["k"] = dd_df.apply(lambda row: calculate_k(row, K_VALUES), axis=1)
-
-    fig = px.histogram(
-        dd_df,
-        x="k",
-        title="Distribution of k Values in Delay Discounting Responses",
-        labels={"k": "k Value"},
-        histnorm="percent",
+    plot_single(
+        st,
+        dd_df["k"],
+        "Distribution of k Values in Delay Discounting Responses",
+        "histogram",
     )
-    fig.update_layout(bargap=0.2)
-
-    st.plotly_chart(fig, use_container_width=True)
 
 
 def update_layout(
@@ -565,6 +615,16 @@ def get_category_columns(survey: Survey, category: str) -> List[str]:
         col
         for col in survey.data.columns
         if re.match(rf"{category_key}\d", survey.get_question_id(col, ""))
+    ]
+
+
+def get_prediction_columns(survey: Survey) -> List[str]:
+    category_keys = ["pi", "pc"]
+    return [
+        col
+        for col in survey.data.columns
+        if re.match(rf"{category_keys[0]}\d", survey.get_question_id(col, ""))
+        or re.match(rf"{category_keys[1]}\d", survey.get_question_id(col, ""))
     ]
 
 
