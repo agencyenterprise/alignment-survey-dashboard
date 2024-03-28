@@ -380,11 +380,11 @@ def get_survey(choice: str) -> Optional[Survey]:
         return None
 
 
-def generate_response(survey: Survey, input_query: str) -> str:
-    """Generates a response using GPT-4 based on the input query and survey data.
+def generate_response(dataframes: List[pd.DataFrame], input_query: str) -> str:
+    """Generates a response using GPT-4 based on the input query and dataframes.
 
     Args:
-        survey: The Survey instance containing the data for analysis.
+        dataframes: A list of pandas DataFrames containing the data for GPT-4 to analyze.
         input_query: The user's input query for GPT-4 to process.
 
     Returns:
@@ -395,17 +395,17 @@ def generate_response(survey: Survey, input_query: str) -> str:
         temperature=0.2,
     )
     agent = create_pandas_dataframe_agent(
-        llm, survey.data, verbose=True, agent_type=AgentType.OPENAI_FUNCTIONS
+        llm, dataframes, verbose=True, agent_type=AgentType.OPENAI_FUNCTIONS
     )
     response = agent.run(input_query)
     return response
 
 
-def handle_gpt4_query(dataframe: pd.DataFrame, st) -> None:
-    """Handles user queries and displays responses from GPT-4.
+def handle_gpt4_query(dataframes: List[pd.DataFrame], st) -> None:
+    """Handles user queries and displays responses from GPT-4 for each provided DataFrame.
 
     Args:
-        dataframe: The pandas DataFrame containing the data for GPT-4 to analyze.
+        dataframes: A list of pandas DataFrames containing the data for GPT-4 to analyze.
         st: The Streamlit module.
     """
     query_placeholder = st.empty()
@@ -415,7 +415,7 @@ def handle_gpt4_query(dataframe: pd.DataFrame, st) -> None:
     )
     if query_text:
         with st.spinner("Running query..."):
-            response = generate_response(dataframe, query_text)
+            response = generate_response(dataframes, query_text)
         st.write("GPT-4:", response)
 
 
@@ -449,6 +449,7 @@ def main() -> None:
         display_side_by_side_analysis(
             survey1, side1_choice, survey2, side2_choice, st, key_suffix="side1"
         )
+        handle_gpt4_query([survey1.data, survey2.data], st)
 
     else:
         st.error("Invalid analysis state selected.")
