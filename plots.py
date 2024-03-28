@@ -254,27 +254,28 @@ def display_correlation_plot(
         y_axis_column: The column to be used as the y-axis.
     """
     grouped_data = (
-        survey.data.groupby(y_axis_column)[x_axis_column]
+        survey.data.groupby(x_axis_column)[y_axis_column]
         .agg(["mean", "std"])
         .reset_index()
     )
     fig = px.scatter(
         grouped_data,
-        x=y_axis_column,
+        x=x_axis_column,
         y="mean",
         error_y="std",
         labels={
-            "mean": "Mean of " + x_axis_column,
-            "std": "Std. Dev. of " + x_axis_column,
+            "mean": "Mean of " + y_axis_column,
+            "std": "Std. Dev. of " + y_axis_column,
         },
-        title=f"Mean of {x_axis_column} with Std. Dev. vs. {y_axis_column}",
+        title=f"Mean of {y_axis_column} with Std. Dev. vs. {x_axis_column}",
     )
 
-    coeffs = np.polyfit(survey.data[y_axis_column], survey.data[x_axis_column], 1)
-    best_fit_line = np.polyval(coeffs, survey.data[y_axis_column])
+    coeffs = np.polyfit(survey.data[x_axis_column], survey.data[y_axis_column], 1)
+    best_fit_line = np.polyval(coeffs, survey.data[x_axis_column])
+
     fig.add_trace(
         go.Scatter(
-            x=survey.data[y_axis_column],
+            x=survey.data[x_axis_column],
             y=best_fit_line,
             mode="lines",
             name="Best Fit Line",
@@ -284,10 +285,11 @@ def display_correlation_plot(
 
     update_layout(
         fig,
-        f"Mean of {x_axis_column} with Std. Dev. vs. {y_axis_column}",
-        y_axis_column,
-        "Mean of " + x_axis_column,
+        f"Mean of {y_axis_column} with Std. Dev. vs. {x_axis_column}",
+        x_axis_column,
+        "Mean of " + y_axis_column,
     )
+
     st.plotly_chart(fig)
 
 
