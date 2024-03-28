@@ -168,9 +168,9 @@ def display_side_by_side_analysis(
     if selected_analysis_type == AnalysisType.GROUPED.value:
         graphs = get_graphs_for_grouped_analysis()
     else:
-        common_columns = list(
-            set(survey.columns).intersection(set(comparison_survey.columns))
-        )
+        common_columns = [
+            col for col in survey.columns if col in comparison_survey.columns
+        ]
         graphs = [survey.get_title(col) for col in common_columns]
 
     selected_graphs = select_graphs(st, f"comparison_select_{key_suffix}", graphs)

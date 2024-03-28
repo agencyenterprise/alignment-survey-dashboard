@@ -51,12 +51,12 @@ def display_individual_vs_community_plot(
     plot_type = survey.get_plot_type(individual_q, "histogram")
     individual_data = (
         survey.data[individual_q].str.split(",").explode().str.strip()
-        if plot_type == "histogram-categorized"
+        if plot_type in ["histogram-categorized", "pie-categorized"]
         else survey.data[individual_q]
     )
     community_data = (
         survey.data[community_q].str.split(",").explode().str.strip()
-        if plot_type == "histogram-categorized"
+        if plot_type in ["histogram-categorized", "pie-categorized"]
         else survey.data[community_q]
     )
 

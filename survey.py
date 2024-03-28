@@ -156,6 +156,12 @@ def concat(surveys: list[Survey], columns: list[str]) -> Survey:
     Returns:
         Survey: A new Survey instance containing the concatenated data and metadata.
     """
-    metadata = pd.concat([survey.metadata[columns] for survey in surveys])
-    data = pd.concat([survey.data[columns] for survey in surveys])
+    metadata = pd.concat([survey.metadata for survey in surveys], ignore_index=True)
+    data = pd.concat([survey.data for survey in surveys], ignore_index=True)
+
+    original_order = surveys[0].data.columns
+    filtered_columns = [col for col in original_order if col in columns]
+    data = data[filtered_columns]
+    metadata = metadata.loc[:, filtered_columns]
+
     return Survey(data, metadata)
