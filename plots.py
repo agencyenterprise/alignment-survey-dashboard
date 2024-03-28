@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from scipy.stats import pearsonr
 from constants import (
     SCORING_MAPPING,
     BIG_FIVE_CATEGORIES,
@@ -14,7 +15,7 @@ from constants import (
     PREDICTIONS,
 )
 from survey import Survey
-from typing import Dict, List, Union, Tuple
+from typing import Dict, List, Union
 
 
 def display_grouped_distribution_plot(st, survey: Survey, category: str) -> None:
@@ -289,9 +290,7 @@ def plot_single(
         st.plotly_chart(fig)
 
 
-def display_correlation_plot(
-    st, survey: Survey, x_axis_column: str, y_axis_column: str
-) -> None:
+def display_correlation_plot(st, survey, x_axis_column, y_axis_column) -> None:
     """Displays a scatter plot showing the correlation between two columns within the survey data.
 
     Args:
@@ -330,12 +329,9 @@ def display_correlation_plot(
         )
     )
 
-    update_layout(
-        fig,
-        f"Mean of {y_axis_column} with Std. Dev. vs. {x_axis_column}",
-        x_axis_column,
-        "Mean of " + y_axis_column,
-    )
+    corr, p_value = pearsonr(survey.data[x_axis_column], survey.data[y_axis_column])
+
+    fig.update_xaxes(title_text=f"{x_axis_column} (r={corr:.2f}, p={p_value:.3g})")
 
     st.plotly_chart(fig)
 
@@ -462,64 +458,116 @@ def display_side_by_side_grouped_distribution_plot(
     )
 
 
-def display_delay_discounting_variance(st, survey: Survey) -> None:
+def display_delay_discounting_variance(
+    st,
+    survey: Survey,
+    comparison_survey: Survey = None,
+    datasource=None,
+    comparison_datasource=None,
+) -> None:
     """Displays a histogram plot of the variance in delay discounting responses within the survey data.
 
     Args:
         st: The Streamlit object used to render the plot.
         survey: The Survey instance containing the survey data and metadata.
+        comparison_survey: An optional second Survey instance for comparison.
+        datasource: The name of the first data source.
+        comparison_datasource: The name of the second data source.
     """
+
+    def get_variance_values(df, dd_columns):
+        """Calculates the variance of delay discounting responses for each participant."""
+        dd_df = df[dd_columns]
+
+        for col in dd_df.columns:
+            dd_df[col] = dd_df[col].map(FLIPPED_DELAY_DISCOUNTING_SCORES).astype(int)
+        return dd_df.var(axis=1)
+
     dd_columns = [
         col
         for col in survey.data.columns
         if survey.get_question_id(col, "").startswith("delaydiscounting")
     ]
-    dd_df = survey.data[dd_columns]
 
-    for col in dd_df.columns:
-        dd_df[col] = dd_df[col].map(FLIPPED_DELAY_DISCOUNTING_SCORES).astype(int)
-    variance_values = dd_df.var(axis=1)
-    plot_single(
-        st,
-        variance_values,
-        "Distribution of Variance in Delay Discounting",
-        "histogram",
-    )
+    dd_variance = get_variance_values(survey.data, dd_columns)
+    if comparison_survey:
+        comparison_dd_variance = get_variance_values(comparison_survey.data, dd_columns)
+        plot_side_by_side(
+            st,
+            "Distribution of Variance in Delay Discounting",
+            dd_variance,
+            datasource or "A",
+            comparison_dd_variance,
+            comparison_datasource or "B",
+        )
+    else:
+        plot_single(
+            st,
+            dd_variance,
+            "Distribution of Variance in Delay Discounting",
+            "histogram",
+        )
 
 
-def display_delay_discounting_k_values(st, survey: Survey) -> None:
+def display_delay_discounting_k_values(
+    st,
+    survey: Survey,
+    comparison_survey: Survey = None,
+    datasource=None,
+    comparison_datasource=None,
+) -> None:
     """Displays a histogram plot of the k values in delay discounting responses within the survey data.
 
     Args:
         st: The Streamlit object used to render the plot.
         survey: The Survey instance containing the survey data and metadata.
+        comparison_survey: An optional second Survey instance for comparison.
+        datasource: The name of the first data source.
+        comparison_datasource: The name of the second data source.
     """
 
-    # Function to calculate the average k value for a participant
     def calculate_k(row, k_values_dict):
+        """Calculates the k value for a given row of delay discounting responses."""
         ks = [k_values_dict[col]["1"] for col in row.index if row[col] == 1]
         return (
             np.mean(ks) if ks else np.nan
         )  # Return NaN if there are no choices for delayed reward
+
+    def get_k_values(df, dd_columns):
+        """Calculates the k value of delay discounting responses for each participant."""
+        dd_df = df[dd_columns]
+        dd_df.columns = [survey.get_question_id(col, "") for col in dd_df.columns]
+
+        for col in dd_df.columns:
+            dd_df[col] = dd_df[col].map(FLIPPED_DELAY_DISCOUNTING_SCORES).astype(int)
+
+        dd_df["k"] = dd_df.apply(lambda row: calculate_k(row, K_VALUES), axis=1)
+        return dd_df["k"]
 
     dd_columns = [
         col
         for col in survey.data.columns
         if survey.get_question_id(col, "").startswith("delaydiscounting")
     ]
-    dd_df = survey.data[dd_columns]
-    dd_df.columns = [survey.get_question_id(col, "") for col in dd_df.columns]
 
-    for col in dd_df.columns:
-        dd_df[col] = dd_df[col].map(FLIPPED_DELAY_DISCOUNTING_SCORES).astype(int)
-
-    dd_df["k"] = dd_df.apply(lambda row: calculate_k(row, K_VALUES), axis=1)
-    plot_single(
-        st,
-        dd_df["k"],
-        "Distribution of k Values in Delay Discounting Responses",
-        "histogram",
-    )
+    dd_k_values = get_k_values(survey.data, dd_columns)
+    if comparison_survey:
+        comparison_dd_k_values = get_k_values(comparison_survey.data, dd_columns)
+        plot_side_by_side(
+            st,
+            "Distribution of k Values in Delay Discounting Responses",
+            dd_k_values,
+            datasource or "A",
+            comparison_dd_k_values,
+            comparison_datasource or "B",
+        )
+    else:
+        plot_single(
+            st,
+            dd_k_values,
+            "Distribution of k Values in Delay Discounting Responses",
+            "histogram",
+        )
 
 
 def update_layout(

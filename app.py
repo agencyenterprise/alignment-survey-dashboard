@@ -91,7 +91,9 @@ def select_graphs(
     return selected_graphs
 
 
-def get_graphs_for_analysis(analysis_type: str, survey: Survey) -> List[str]:
+def get_graphs_for_analysis(
+    analysis_type: str, survey: Survey, side_by_side=False
+) -> List[str]:
     """Determines the appropriate graphs to display based on the analysis type.
 
     Args:
@@ -124,7 +126,15 @@ def get_graphs_for_analysis(analysis_type: str, survey: Survey) -> List[str]:
             if individual_q in survey.columns:
                 graphs.append(survey.get_title(individual_q) + " vs. Community View")
     if analysis_type == AnalysisType.MISCELLANEOUS.value:
-        graphs.extend(MISC_GRAPH_TYPES.keys())
+        if not side_by_side:
+            graphs.extend(MISC_GRAPH_TYPES.keys())
+        else:
+            graphs.extend(
+                [
+                    "Distribution of Variance in Delay Discounting Responses",
+                    "Distribution of k Values (lower = less future discounting)",
+                ]
+            )
 
     if analysis_type == AnalysisType.RAW.value:
         return [survey.get_title(col) for col in survey.columns]
@@ -157,7 +167,11 @@ def display_side_by_side_analysis(
         key_suffix=f"comparison_{key_suffix}",
     )
 
-    analysis_types = [AnalysisType.RAW.value, AnalysisType.GROUPED.value]
+    analysis_types = [
+        AnalysisType.RAW.value,
+        AnalysisType.GROUPED.value,
+        AnalysisType.MISCELLANEOUS.value,
+    ]
     selected_analysis_type = st.selectbox(
         "Select Analysis Type:",
         options=analysis_types,
@@ -165,8 +179,13 @@ def display_side_by_side_analysis(
         key=f"analysis_type_{key_suffix}",
     )
 
-    if selected_analysis_type == AnalysisType.GROUPED.value:
-        graphs = get_graphs_for_grouped_analysis()
+    if selected_analysis_type in [
+        AnalysisType.GROUPED.value,
+        AnalysisType.MISCELLANEOUS.value,
+    ]:
+        graphs = get_graphs_for_analysis(
+            selected_analysis_type, survey, side_by_side=True
+        )
     else:
         common_columns = [
             col for col in survey.columns if col in comparison_survey.columns
@@ -186,6 +205,19 @@ def display_side_by_side_analysis(
                 datasource,
                 comparison_datasource,
             )
+        elif selected_analysis_type == AnalysisType.MISCELLANEOUS.value:
+            if graph.endswith(" Variance in Delay Discounting Responses"):
+                plots.display_delay_discounting_variance(
+                    st,
+                    survey,
+                    comparison_survey,
+                    datasource,
+                    comparison_datasource,
+                )
+            elif graph.endswith(" k Values (lower = less future discounting)"):
+                plots.display_delay_discounting_k_values(
+                    st, survey, comparison_survey, datasource, comparison_datasource
+                )
         else:
             selected_column_key = next(
                 col for col in common_columns if survey.get_title(col) == graph
@@ -199,31 +231,6 @@ def display_side_by_side_analysis(
                 datasource,
                 comparison_datasource,
             )
-
-
-def get_graphs_for_grouped_analysis() -> List[str]:
-    """Get graphs suitable for grouped analysis from two surveys.
-
-    Args:
-        survey: The first Survey instance.
-        comparison_survey: The second Survey instance.
-
-    Returns:
-        A list of graph titles suitable for grouped analysis.
-    """
-    return [
-        f"Overall Distribution for {category_name}"
-        for category_name in (
-            set(
-                [
-                    category_name
-                    for category_name in (
-                        BIG_FIVE_CATEGORIES | MORAL_FOUNDATIONS_CATEGORIES
-                    ).values()
-                ]
-            )
-        )
-    ]
 
 
 def display_standard_analysis(
