@@ -225,8 +225,8 @@ def plot_single(
     data: pd.Series,
     series_name: str,
     plot_type: str = "histogram",
-    zoom_to_fit_categories: bool = False,
     plot_kwargs: Dict = {},
+    zoom_to_fit_categories: bool = False,
 ) -> None:
     """Displays a standard plot for a selected column within the survey data.
 
@@ -264,12 +264,16 @@ def plot_single(
         if zoom_to_fit_categories:
             num_categories = len(x_values)
             fig.update_xaxes(range=[-0.5, num_categories - 0.5])
+        fig.update_traces(
+            customdata=data_counts.values,
+            hovertemplate="%{x}: percent=%{y}%, count=%{customdata}<extra></extra>",
+        )
     elif plot_type in ["pie-categorized", "pie"]:
         fig = px.pie(data, names=series_name, **plot_kwargs)
         fig.update_traces(hole=0.4, hoverinfo="label+percent+name")
 
     if fig:
-        update_layout(fig, series_name, xaxis_title="")
+        update_layout(fig, series_name, xaxis_title="", yaxis_title="percent")
         st.plotly_chart(fig)
 
 
