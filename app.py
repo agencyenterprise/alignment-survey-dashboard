@@ -139,7 +139,7 @@ def display_side_by_side_analysis(
     st,
     key_suffix: str = "",
 ) -> None:
-    """Displays a side-by-side analysis comparing two surveys.
+    """Displays a side-by-side analysis comparing two surveys, including grouped analysis.
 
     Args:
         survey: The first Survey instance.
@@ -156,28 +156,73 @@ def display_side_by_side_analysis(
         key_suffix=f"comparison_{key_suffix}",
     )
 
-    common_columns = list(
-        set(survey.columns).intersection(set(comparison_survey.columns))
+    analysis_types = [AnalysisType.RAW.value, AnalysisType.GROUPED.value]
+    selected_analysis_type = st.selectbox(
+        "Select Analysis Type:",
+        options=analysis_types,
+        index=0,
+        key=f"analysis_type_{key_suffix}",
     )
-    column_titles = [survey.get_title(col) for col in common_columns]
 
-    selected_columns = select_graphs(
-        st, f"comparison_select_{key_suffix}", column_titles
-    )
-
-    for selected_title in selected_columns:
-        selected_column_key = next(
-            col for col in common_columns if survey.get_title(col) == selected_title
+    if selected_analysis_type == AnalysisType.GROUPED.value:
+        graphs = get_graphs_for_grouped_analysis()
+    else:
+        common_columns = list(
+            set(survey.columns).intersection(set(comparison_survey.columns))
         )
+        graphs = [survey.get_title(col) for col in common_columns]
 
-        plots.display_side_by_side_plot(
-            st,
-            selected_column_key,
-            survey,
-            comparison_survey,
-            datasource,
-            comparison_datasource,
+    selected_graphs = select_graphs(st, f"comparison_select_{key_suffix}", graphs)
+
+    for graph in selected_graphs:
+        if selected_analysis_type == AnalysisType.GROUPED.value:
+            category = graph.split("for ")[1]
+            plots.display_side_by_side_grouped_distribution_plot(
+                st,
+                category,
+                survey,
+                comparison_survey,
+                datasource,
+                comparison_datasource,
+            )
+        else:
+            selected_column_key = next(
+                col for col in common_columns if survey.get_title(col) == graph
+            )
+
+            plots.display_side_by_side_plot(
+                st,
+                selected_column_key,
+                survey,
+                comparison_survey,
+                datasource,
+                comparison_datasource,
+            )
+
+
+def get_graphs_for_grouped_analysis() -> List[str]:
+    """Get graphs suitable for grouped analysis from two surveys.
+
+    Args:
+        survey: The first Survey instance.
+        comparison_survey: The second Survey instance.
+
+    Returns:
+        A list of graph titles suitable for grouped analysis.
+    """
+    return [
+        f"Overall Distribution for {category_name}"
+        for category_name in (
+            set(
+                [
+                    category_name
+                    for category_name in (
+                        BIG_FIVE_CATEGORIES | MORAL_FOUNDATIONS_CATEGORIES
+                    ).values()
+                ]
+            )
         )
+    ]
 
 
 def display_standard_analysis(

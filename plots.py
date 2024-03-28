@@ -24,19 +24,7 @@ def display_grouped_distribution_plot(st, survey: Survey, category: str) -> None
         survey: The Survey instance containing the survey data and metadata.
         category: The category for which the grouped distribution plot is to be displayed.
     """
-    category_key = next(
-        (
-            k
-            for k, v in (BIG_FIVE_CATEGORIES | MORAL_FOUNDATIONS_CATEGORIES).items()
-            if v == category
-        ),
-        None,
-    )
-    category_cols = [
-        col
-        for col in survey.data.columns
-        if re.match(rf"{category_key}\d", survey.get_question_id(col, ""))
-    ]
+    category_cols = get_category_columns(survey, category)
     transformed_data = transform_survey_data(survey, category_cols)
     survey.data[category] = transformed_data.mean(axis=1)
     display_standard_plot(
@@ -333,6 +321,7 @@ def display_side_by_side_plot(
             marker_color="blue",
             opacity=0.75,
             histnorm="percent",
+            nbinsx=10,
         )
     )
     fig.add_trace(
@@ -342,6 +331,7 @@ def display_side_by_side_plot(
             marker_color="red",
             opacity=0.75,
             histnorm="percent",
+            nbinsx=10,
         )
     )
 
@@ -353,6 +343,43 @@ def display_side_by_side_plot(
         barmode="group",
     )
     st.plotly_chart(fig)
+
+
+def display_side_by_side_grouped_distribution_plot(
+    st,
+    category: str,
+    survey: Survey,
+    comparison_survey: Survey,
+    datasource: str,
+    comparison_datasource: str,
+):
+    """Displays a side-by-side grouped analysis for a given category.
+
+    Args:
+        st: The Streamlit module.
+        category: The category to display.
+        survey: The first Survey instance.
+        comparison_survey: The second Survey instance.
+        datasource: The name or source of the first survey data.
+        comparison_datasource: The name or source of the second survey data.
+    """
+    category_cols = get_category_columns(survey, category)
+
+    survey_data_transformed = transform_survey_data(survey, category_cols)
+    comparison_data_transformed = transform_survey_data(
+        comparison_survey, category_cols
+    )
+    survey.data[category] = survey_data_transformed.mean(axis=1)
+    comparison_survey.data[category] = comparison_data_transformed.mean(axis=1)
+
+    display_side_by_side_plot(
+        st,
+        category,
+        survey,
+        comparison_survey,
+        datasource,
+        comparison_datasource,
+    )
 
 
 def display_delay_discounting_variance(st, survey: Survey) -> None:
@@ -471,6 +498,31 @@ def transform_survey_data(survey: Survey, category_cols: List[str]) -> pd.DataFr
         if survey.get_scoring(col) == "reverse":
             transformed_data[col] = transformed_data[col].apply(lambda x: 6 - x)
     return transformed_data
+
+
+def get_category_columns(survey: Survey, category: str) -> List[str]:
+    """Retrieves the columns corresponding to a specific category within the survey data.
+
+    Args:
+        survey: The Survey instance containing the survey data and metadata.
+        category: The category for which columns are to be retrieved.
+
+    Returns:
+        A list of column names corresponding to the specified category.
+    """
+    category_key = next(
+        (
+            k
+            for k, v in (BIG_FIVE_CATEGORIES | MORAL_FOUNDATIONS_CATEGORIES).items()
+            if v == category
+        ),
+        None,
+    )
+    return [
+        col
+        for col in survey.data.columns
+        if re.match(rf"{category_key}\d", survey.get_question_id(col, ""))
+    ]
 
 
 def calculate_category_statistics(
