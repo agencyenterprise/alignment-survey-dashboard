@@ -60,6 +60,15 @@ def display_individual_vs_community_plot(
         else survey.data[community_q]
     )
 
+    scoring = survey.get_scoring(individual_q)
+    is_prediction = individual_q in get_prediction_columns(survey)
+    individual_data = format_survey_data_for_plotting(
+        individual_data, scoring, is_prediction
+    )
+    community_data = format_survey_data_for_plotting(
+        community_data, scoring, is_prediction
+    )
+
     plot_side_by_side(
         st,
         survey.get_title(individual_q),
