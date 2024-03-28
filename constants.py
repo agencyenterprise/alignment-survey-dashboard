@@ -88,10 +88,6 @@ MORAL_FOUNDATIONS_COLUMNS = [
     "selfcontrol6",
 ]
 
-PREDICTIONS_COLUMNS = {
-    "Individual": ["pi1", "pi2", "pi3", "pi4"],
-    "Community": ["pc1", "pc2", "pc3", "pc4"],
-}
 
 ACCEPTED_RESPONSES = {
     "How would you describe your political orientation?": [

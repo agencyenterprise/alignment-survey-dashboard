@@ -9,7 +9,6 @@ from constants import (
     MORAL_FOUNDATIONS_CATEGORIES,
     BIG_FIVE_COLUMNS,
     MORAL_FOUNDATIONS_COLUMNS,
-    PREDICTIONS_COLUMNS,
     FLIPPED_DELAY_DISCOUNTING_SCORES,
     K_VALUES,
 )
@@ -120,12 +119,8 @@ def display_predictions_graph(st, survey: Survey, level_name: str) -> None:
         survey: The Survey instance containing the survey data and metadata.
         level_name: The name of the level within a specific category for which predictions are displayed.
     """
-    column_ids = PREDICTIONS_COLUMNS[level_name]
-    columns = {
-        col: survey.get_title(col)
-        for col in survey.data.columns
-        if survey.get_question_id(col, "") in column_ids
-    }
+    column_names = get_prediction_columns(survey, level_name)
+    columns = {col: survey.get_question_id(col) for col in column_names}
 
     melted_df = survey.data.melt(
         value_vars=columns.keys(), var_name="Question", value_name="Response"
@@ -221,6 +216,7 @@ def display_raw_distribution_plot(st, survey: Survey, selected_column: str) -> N
             else selected_column
         ),
         plot_type,
+        zoom_to_fit_categories=True,
     )
 
 
@@ -229,6 +225,7 @@ def plot_single(
     data: pd.Series,
     series_name: str,
     plot_type: str = "histogram",
+    zoom_to_fit_categories: bool = False,
     plot_kwargs: Dict = {},
 ) -> None:
     """Displays a standard plot for a selected column within the survey data.
@@ -264,8 +261,9 @@ def plot_single(
         fig_kwargs.update(plot_kwargs)
         fig = px.histogram(x=x_values, y=y_values, **fig_kwargs)
         fig.update_layout(bargap=0.2, showlegend=False)
-        num_categories = len(x_values)
-        fig.update_xaxes(range=[-0.5, num_categories - 0.5])
+        if zoom_to_fit_categories:
+            num_categories = len(x_values)
+            fig.update_xaxes(range=[-0.5, num_categories - 0.5])
     elif plot_type in ["pie-categorized", "pie"]:
         fig = px.pie(data, names=series_name, **plot_kwargs)
         fig.update_traces(hole=0.4, hoverinfo="label+percent+name")
@@ -618,13 +616,21 @@ def get_category_columns(survey: Survey, category: str) -> List[str]:
     ]
 
 
-def get_prediction_columns(survey: Survey) -> List[str]:
-    category_keys = ["pi", "pc"]
+def get_prediction_columns(survey: Survey, level_name=None) -> List[str]:
+    if level_name == "Individual":
+        category_keys = ["pi"]
+    elif level_name == "Community":
+        category_keys = ["pc"]
+    else:
+        category_keys = ["pi", "pc"]
+
     return [
         col
         for col in survey.data.columns
-        if re.match(rf"{category_keys[0]}\d", survey.get_question_id(col, ""))
-        or re.match(rf"{category_keys[1]}\d", survey.get_question_id(col, ""))
+        if any(
+            re.match(rf"{category_key}\d", survey.get_question_id(col, ""))
+            for category_key in category_keys
+        )
     ]
 
 
