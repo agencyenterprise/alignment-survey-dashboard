@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.figure_factory as ff
 from scipy.stats import pearsonr
 from constants import (
     SCORING_MAPPING,
@@ -326,6 +327,33 @@ def display_correlation_plot(st, survey, x_axis_column, y_axis_column) -> None:
     fig.update_xaxes(title_text=f"{x_axis_column} (r={corr:.2f}, p={p_value:.3g})")
 
     st.plotly_chart(fig)
+
+
+def display_correlation_matrix(st, survey: Survey) -> None:
+    """Displays a correlation matrix for all numeric columns in the survey data.
+
+    Args:
+        st: The Streamlit module.
+        survey: The Survey instance containing the data for analysis.
+    """
+    corr_matrix = survey.data[survey.numeric_columns].corr()
+
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=corr_matrix,
+            x=corr_matrix.columns,
+            y=corr_matrix.index,
+            hoverongaps=False,
+            colorscale="Viridis",
+        )
+    )
+
+    fig.update_yaxes(autorange="reversed")
+    fig.update_xaxes(showticklabels=False)
+    fig.update_yaxes(showticklabels=False)
+
+    fig.update_layout(title_text="Correlation Matrix", title_x=0.0)
+    st.plotly_chart(fig, use_container_width=True)
 
 
 def display_side_by_side_plot(

@@ -306,6 +306,8 @@ def display_correlation_analysis(st, survey: Survey, key_suffix: str) -> None:
         )
     plots.display_correlation_plot(st, survey, x_axis_column, y_axis_column)
 
+    plots.display_correlation_matrix(st, survey)
+
 
 def display_raw_analysis(st, survey: Survey, key_suffix: str) -> None:
     """Displays raw analysis for selected columns from the survey.
