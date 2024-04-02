@@ -314,9 +314,7 @@ def display_correlation_analysis(st, survey: Survey, key_suffix: str) -> None:
         )
     plots.display_correlation_plot(st, survey, x_axis_column, y_axis_column)
 
-    plots.display_correlation_matrix(st, survey)
-
-    plots.display_grouped_correlation_matrix(st, survey)
+    plots.display_correlation_matrix(st, _get_survey_numeric_data(survey))
 
 
 def display_raw_analysis(st, survey: Survey, key_suffix: str) -> None:
@@ -386,20 +384,23 @@ def display_miscellaneous_analysis(st, survey: Survey, key_suffix: str) -> None:
         )
 
 
-def display_regression_analysis(st, survey: Survey, key_suffix: str) -> None:
-    """Displays regression or classification analysis based on the user's selection of target and features.
+def _get_survey_numeric_data(survey: Survey) -> pd.DataFrame:
+    """Returns the numeric data from the survey.
+    Converts the categorical data to numeric data using the PREDICTIONS_MAPPING.
+    Adds group distribution columns for each category in the survey.
 
     Args:
-        st: The Streamlit module.
         survey: The Survey instance containing the data for analysis.
-        key_suffix: A suffix to differentiate session state keys if necessary.
-    """
-    st.write("## Regression Analysis")
 
-    regression_data = survey.data.copy()
+    Returns:
+        The numeric data from the survey.
+    """
+    numeric_data = survey.data.copy()
+    numeric_data = numeric_data[survey.numeric_columns]
+
     prediction_columns = survey.get_prediction_columns()
     for col in prediction_columns:
-        regression_data[col] = regression_data[col].map(
+        numeric_data[col] = survey.data[col].map(
             {v: k for k, v in PREDICTIONS_MAPPING.items()}
         )
 
@@ -419,17 +420,31 @@ def display_regression_analysis(st, survey: Survey, key_suffix: str) -> None:
     for col in group_distribution_columns:
         category = col.split("for ")[1]
         category_cols = survey.get_category_columns(category)
-        regression_data[col] = survey.get_category_data_distribution(category_cols)
+        numeric_data[col] = survey.get_category_data_distribution(category_cols)
 
-    all_columns = (
-        list(survey.numeric_columns) + prediction_columns + group_distribution_columns
-    )
+    return numeric_data
+
+
+def display_regression_analysis(st, survey: Survey, key_suffix: str) -> None:
+    """Displays regression or classification analysis based on the user's selection of target and features.
+
+    Args:
+        st: The Streamlit module.
+        survey: The Survey instance containing the data for analysis.
+        key_suffix: A suffix to differentiate session state keys if necessary.
+    """
+    st.write("## Regression Analysis")
+
+    regression_data = _get_survey_numeric_data(survey)
+
     target_column = st.selectbox(
-        "Select Target Column", options=all_columns, key=f"target_column_{key_suffix}"
+        "Select Target Column",
+        options=regression_data.columns,
+        key=f"target_column_{key_suffix}",
     )
     feature_columns = st.multiselect(
         "Select Feature Columns",
-        options=all_columns,
+        options=regression_data.columns,
         key=f"feature_columns_{key_suffix}",
     )
 

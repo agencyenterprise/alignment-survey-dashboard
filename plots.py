@@ -302,14 +302,14 @@ def display_correlation_plot(st, survey, x_axis_column, y_axis_column) -> None:
     st.plotly_chart(fig)
 
 
-def display_correlation_matrix(st, survey: Survey) -> None:
-    """Displays a correlation matrix for all numeric columns in the survey data.
+def display_correlation_matrix(st, dataframe: pd.DataFrame) -> None:
+    """Displays a correlation matrix for the given data frame.
 
     Args:
         st: The Streamlit module.
-        survey: The Survey instance containing the data for analysis.
+        dataframe: The data frame for which the correlation matrix is to be displayed.
     """
-    corr_matrix = survey.data[survey.numeric_columns].corr()
+    corr_matrix = dataframe.corr()
 
     fig = go.Figure(
         data=go.Heatmap(
@@ -326,36 +326,6 @@ def display_correlation_matrix(st, survey: Survey) -> None:
     fig.update_yaxes(showticklabels=False)
 
     fig.update_layout(title_text="Correlation Matrix", title_x=0.0)
-    st.plotly_chart(fig, use_container_width=True)
-
-
-def display_grouped_correlation_matrix(st, survey: Survey) -> None:
-    """Displays a correlation matrix for the mean distribution values of different categories within the survey.
-
-    Args:
-        st: The Streamlit object used to render the plot.
-        survey: The Survey instance containing the survey data and metadata.
-    """
-    category_means = pd.DataFrame()
-    for category in (BIG_FIVE_CATEGORIES | MORAL_FOUNDATIONS_CATEGORIES).values():
-        category_cols = survey.get_category_columns(category)
-        category_means[category] = survey.get_category_data_distribution(category_cols)
-
-    corr_matrix = category_means.corr()
-
-    fig = go.Figure(
-        data=go.Heatmap(
-            z=corr_matrix,
-            x=corr_matrix.columns,
-            y=corr_matrix.index,
-            hoverongaps=False,
-            colorscale="Viridis",
-        )
-    )
-
-    fig.update_layout(title_text="Grouped Correlation Matrix", title_x=0.0)
-    fig.update_yaxes(autorange="reversed")
-
     st.plotly_chart(fig, use_container_width=True)
 
 
