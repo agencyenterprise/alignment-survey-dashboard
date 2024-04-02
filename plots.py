@@ -389,10 +389,11 @@ def plot_side_by_side(
             data_counts = plot_data.value_counts().reindex(
                 plot_data.cat.categories, fill_value=0
             )
+            data_percentages = data_counts / data_counts.sum() * 100
             fig.add_trace(
                 go.Bar(
                     x=plot_data.cat.categories,
-                    y=data_counts,
+                    y=data_percentages,
                     name=plot_source,
                     marker_color=plot_color,
                     opacity=0.75,
@@ -410,10 +411,9 @@ def plot_side_by_side(
                 )
             )
 
-    update_layout(
-        fig,
-        title,
-        yaxis_title="percent",
+    fig.update_layout(
+        title=title,
+        yaxis_title="Percentage",
         legend_title="Dataset",
         barmode="group",
     )
