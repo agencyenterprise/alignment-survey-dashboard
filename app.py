@@ -16,6 +16,7 @@ from constants import (
     QUESTION_PAIRS,
     BIG_FIVE_CATEGORIES,
     MORAL_FOUNDATIONS_CATEGORIES,
+    PREDICTIONS_MAPPING,
 )
 
 
@@ -394,7 +395,35 @@ def display_regression_analysis(st, survey: Survey, key_suffix: str) -> None:
         key_suffix: A suffix to differentiate session state keys if necessary.
     """
     st.write("## Regression Analysis")
-    all_columns = survey.numeric_columns
+
+    regression_data = survey.data.copy()
+    prediction_columns = survey.get_prediction_columns()
+    for col in prediction_columns:
+        regression_data[col] = regression_data[col].map(
+            {v: k for k, v in PREDICTIONS_MAPPING.items()}
+        )
+
+    group_distribution_columns = [
+        f"Overall Distribution for {category_name}"
+        for category_name in (
+            set(
+                [
+                    category_name
+                    for category_name in (
+                        BIG_FIVE_CATEGORIES | MORAL_FOUNDATIONS_CATEGORIES
+                    ).values()
+                ]
+            )
+        )
+    ]
+    for col in group_distribution_columns:
+        category = col.split("for ")[1]
+        category_cols = survey.get_category_columns(category)
+        regression_data[col] = survey.get_category_data_distribution(category_cols)
+
+    all_columns = (
+        list(survey.numeric_columns) + prediction_columns + group_distribution_columns
+    )
     target_column = st.selectbox(
         "Select Target Column", options=all_columns, key=f"target_column_{key_suffix}"
     )
@@ -408,8 +437,8 @@ def display_regression_analysis(st, survey: Survey, key_suffix: str) -> None:
         st.warning("Please select at least one feature column.")
         return
 
-    X = survey.data[feature_columns]
-    y = survey.data[target_column]
+    X = regression_data[feature_columns]
+    y = regression_data[target_column]
 
     if y.dtype == "object" or len(y.unique()) < 10:
         model = LogisticRegression(max_iter=1000)

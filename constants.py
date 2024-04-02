@@ -6,6 +6,14 @@ SCORING_MAPPING = {
     5: "Strongly agree",
 }
 
+PREDICTIONS_MAPPING = {
+    1: "Very unpromising",
+    2: "Somewhat unpromising",
+    3: "Unsure/agnostic",
+    4: "Somewhat promising",
+    5: "Very promising",
+}
+
 BIG_FIVE_COLUMNS = [
     "e1",
     "c1",

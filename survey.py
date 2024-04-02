@@ -1,6 +1,13 @@
 import pandas as pd
-from typing import Optional, Tuple
-from constants import ACCEPTED_RESPONSES, MULTIPLE_ACCEPTED_RESPONSES, BIG_FIVE_COLUMNS
+import re
+from typing import Optional, Tuple, List
+from constants import (
+    ACCEPTED_RESPONSES,
+    MULTIPLE_ACCEPTED_RESPONSES,
+    BIG_FIVE_COLUMNS,
+    BIG_FIVE_CATEGORIES,
+    MORAL_FOUNDATIONS_CATEGORIES,
+)
 
 
 class Survey:
@@ -102,6 +109,73 @@ class Survey:
             if self.get_title(col) == title:
                 return col
         return None
+
+    def get_prediction_columns(self, level_name=None) -> List[str]:
+        """Returns the columns for questions about predictions.
+
+        Args:
+            level_name (str): The level of the survey data to filter by.
+            Can be "Individual", "Community", or "All".
+
+        Returns:
+            List[str]: A list of columns for questions about predictions.
+        """
+        if level_name == "Individual":
+            category_keys = ["iep", "iap"]
+        elif level_name == "Community":
+            category_keys = ["cep", "cap"]
+        else:
+            category_keys = ["iep", "iap", "cep", "cap"]
+
+        return [
+            col
+            for col in self.data.columns
+            if any(
+                re.match(rf"{category_key}\d", self.get_question_id(col, ""))
+                for category_key in category_keys
+            )
+        ]
+
+    def get_category_columns(self, category: Optional[str] = None) -> List[str]:
+        """Retrieves the columns corresponding to a specific category within the survey data.
+
+        Args:
+            category: The category for which columns are to be retrieved.
+            Can be one of the keys in BIG_FIVE_CATEGORIES or MORAL_FOUNDATIONS_CATEGORIES.
+
+        Returns:
+            A list of column names corresponding to the specified category.
+        """
+        category_key = next(
+            (
+                k
+                for k, v in (BIG_FIVE_CATEGORIES | MORAL_FOUNDATIONS_CATEGORIES).items()
+                if v == category
+            ),
+            None,
+        )
+        return [
+            col
+            for col in self.data.columns
+            if re.match(rf"{category_key}\d", self.get_question_id(col, ""))
+        ]
+
+    def get_category_data_distribution(self, category_cols: List[str]) -> pd.Series:
+        """Converts category columns to numeric values and applies reverse scoring where necessary.
+        Then calculates the mean of the transformed data across the specified category columns.
+
+        Args:
+            category_cols: The category columns to transform.
+
+        Returns:
+            A Series containing the mean of the transformed data across the specified category columns.
+        """
+        transformed_data = pd.DataFrame()
+        for col in category_cols:
+            transformed_data[col] = pd.to_numeric(self.data[col], errors="coerce")
+            if self.get_scoring(col) == "reverse":
+                transformed_data[col] = transformed_data[col].apply(lambda x: 6 - x)
+        return transformed_data.mean(axis=1)
 
     @classmethod
     def from_file(cls, file_path: str) -> "Survey":

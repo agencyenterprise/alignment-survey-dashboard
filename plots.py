@@ -1,9 +1,7 @@
-import re
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import plotly.figure_factory as ff
 from scipy.stats import pearsonr
 from constants import (
     SCORING_MAPPING,
@@ -27,12 +25,10 @@ def display_grouped_distribution_plot(st, survey: Survey, category: str) -> None
         survey: The Survey instance containing the survey data and metadata.
         category: The category for which the grouped distribution plot is to be displayed.
     """
-    category_cols = get_category_columns(survey, category)
-    transformed_data = transform_survey_data(survey, category_cols)
-    distribution = transformed_data.mean(axis=1)
+    category_cols = survey.get_category_columns(category)
     plot_single(
         st,
-        distribution,
+        survey.get_category_data_distribution(category_cols),
         category,
         "histogram",
         {"nbins": 10, "histnorm": "percent"},
@@ -110,7 +106,7 @@ def display_predictions_graph(st, survey: Survey, level_name: str) -> None:
         survey: The Survey instance containing the survey data and metadata.
         level_name: The name of the level within a specific category for which predictions are displayed.
     """
-    column_names = get_prediction_columns(survey, level_name)
+    column_names = survey.get_prediction_columns(level_name)
     columns = {
         col: PREDICTIONS[survey.get_question_id(col)[1:]] for col in column_names
     }
@@ -162,7 +158,7 @@ def format_survey_data_for_plotting(survey, selected_column) -> pd.Series:
     """
     data = survey.data[selected_column]
     scoring = survey.get_scoring(selected_column)
-    is_prediction = selected_column in get_prediction_columns(survey)
+    is_prediction = selected_column in survey.get_prediction_columns()
     plot_type = survey.get_plot_type(selected_column, "histogram")
     is_comma_separated = plot_type in ["histogram-categorized", "pie-categorized"]
 
@@ -186,7 +182,6 @@ def format_survey_data_for_plotting(survey, selected_column) -> pd.Series:
             "Somewhat promising",
             "Very promising",
         ]
-        # Ensure all prediction categories are present
         data = pd.Series(pd.Categorical(data, categories=categories, ordered=True))
         data = data.sort_values()
 
@@ -343,10 +338,8 @@ def display_grouped_correlation_matrix(st, survey: Survey) -> None:
     """
     category_means = pd.DataFrame()
     for category in (BIG_FIVE_CATEGORIES | MORAL_FOUNDATIONS_CATEGORIES).values():
-        category_cols = get_category_columns(survey, category)
-        transformed_data = transform_survey_data(survey, category_cols)
-        distribution = transformed_data.mean(axis=1)
-        category_means[category] = distribution
+        category_cols = survey.get_category_columns(category)
+        category_means[category] = survey.get_category_data_distribution(category_cols)
 
     corr_matrix = category_means.corr()
 
@@ -475,19 +468,14 @@ def display_side_by_side_grouped_distribution_plot(
         datasource: The name or source of the first survey data.
         comparison_datasource: The name or source of the second survey data.
     """
-    category_cols = get_category_columns(survey, category)
-
-    survey_data_transformed = transform_survey_data(survey, category_cols)
-    comparison_data_transformed = transform_survey_data(
-        comparison_survey, category_cols
-    )
+    category_cols = survey.get_category_columns(category)
 
     plot_side_by_side(
         st,
         category,
-        survey_data_transformed.mean(axis=1),
+        survey.get_category_data_distribution(category_cols),
         datasource,
-        comparison_data_transformed.mean(axis=1),
+        comparison_survey.get_category_data_distribution(category_cols),
         comparison_datasource,
         nbins=10,
     )
@@ -673,67 +661,6 @@ def add_standard_error_trace(
             x=x_data, y=y_data, error_y=dict(type="data", array=error_data), name=name
         )
     )
-
-
-def transform_survey_data(survey: Survey, category_cols: List[str]) -> pd.DataFrame:
-    """Transforms survey data based on specified category columns and scoring.
-
-    Args:
-        survey: The Survey instance containing the survey data and metadata.
-        category_cols: The category columns to transform.
-
-    Returns:
-        A pandas DataFrame with transformed data.
-    """
-    transformed_data = pd.DataFrame()
-    for col in category_cols:
-        transformed_data[col] = pd.to_numeric(survey.data[col], errors="coerce")
-        if survey.get_scoring(col) == "reverse":
-            transformed_data[col] = transformed_data[col].apply(lambda x: 6 - x)
-    return transformed_data
-
-
-def get_category_columns(survey: Survey, category: str) -> List[str]:
-    """Retrieves the columns corresponding to a specific category within the survey data.
-
-    Args:
-        survey: The Survey instance containing the survey data and metadata.
-        category: The category for which columns are to be retrieved.
-
-    Returns:
-        A list of column names corresponding to the specified category.
-    """
-    category_key = next(
-        (
-            k
-            for k, v in (BIG_FIVE_CATEGORIES | MORAL_FOUNDATIONS_CATEGORIES).items()
-            if v == category
-        ),
-        None,
-    )
-    return [
-        col
-        for col in survey.data.columns
-        if re.match(rf"{category_key}\d", survey.get_question_id(col, ""))
-    ]
-
-
-def get_prediction_columns(survey: Survey, level_name=None) -> List[str]:
-    if level_name == "Individual":
-        category_keys = ["iep", "iap"]
-    elif level_name == "Community":
-        category_keys = ["cep", "cap"]
-    else:
-        category_keys = ["iep", "iap", "cep", "cap"]
-
-    return [
-        col
-        for col in survey.data.columns
-        if any(
-            re.match(rf"{category_key}\d", survey.get_question_id(col, ""))
-            for category_key in category_keys
-        )
-    ]
 
 
 def calculate_category_statistics(
