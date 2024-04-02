@@ -50,33 +50,12 @@ def display_individual_vs_community_plot(
         individual_q: The column name for individual responses.
         community_q: The column name for community responses.
     """
-    plot_type = survey.get_plot_type(individual_q, "histogram")
-    individual_data = (
-        survey.data[individual_q].str.split(",").explode().str.strip()
-        if plot_type in ["histogram-categorized", "pie-categorized"]
-        else survey.data[individual_q]
-    )
-    community_data = (
-        survey.data[community_q].str.split(",").explode().str.strip()
-        if plot_type in ["histogram-categorized", "pie-categorized"]
-        else survey.data[community_q]
-    )
-
-    scoring = survey.get_scoring(individual_q)
-    is_prediction = individual_q in get_prediction_columns(survey)
-    individual_data = format_survey_data_for_plotting(
-        individual_data, scoring, is_prediction
-    )
-    community_data = format_survey_data_for_plotting(
-        community_data, scoring, is_prediction
-    )
-
     plot_side_by_side(
         st,
         survey.get_title(individual_q),
-        individual_data,
+        format_survey_data_for_plotting(survey, individual_q),
         "Individual",
-        community_data,
+        format_survey_data_for_plotting(survey, community_q),
         "Community",
     )
 
@@ -170,17 +149,23 @@ def display_predictions_graph(st, survey: Survey, level_name: str) -> None:
     st.plotly_chart(fig, use_container_width=True)
 
 
-def format_survey_data_for_plotting(data, scoring, is_prediction) -> pd.Series:
-    """Formats survey data for plotting based on scoring information.
+def format_survey_data_for_plotting(survey, selected_column) -> pd.Series:
+    """Formats survey data for plotting based on the selected column.
 
     Args:
-        data: The survey data to be formatted.
-        scoring: The scoring information to be applied.
-        is_prediction: Whether the data corresponds to predictions.
+        survey: The survey data to be formatted.
+        selected_column: The column for which the data is to be formatted.
+
 
     Returns:
         The formatted data for the plot.
     """
+    data = survey.data[selected_column]
+    scoring = survey.get_scoring(selected_column)
+    is_prediction = selected_column in get_prediction_columns(survey)
+    plot_type = survey.get_plot_type(selected_column, "histogram")
+    is_comma_separated = plot_type in ["histogram-categorized", "pie-categorized"]
+
     if scoring is not None:
         data = data.replace(SCORING_MAPPING)
         categories = [
@@ -190,7 +175,7 @@ def format_survey_data_for_plotting(data, scoring, is_prediction) -> pd.Series:
             "Somewhat agree",
             "Strongly agree",
         ]
-        data = pd.Categorical(data, categories=categories, ordered=True)
+        data = pd.Series(pd.Categorical(data, categories=categories, ordered=True))
         data = data.sort_values()
 
     if is_prediction:
@@ -202,8 +187,11 @@ def format_survey_data_for_plotting(data, scoring, is_prediction) -> pd.Series:
             "Very promising",
         ]
         # Ensure all prediction categories are present
-        data = pd.Categorical(data, categories=categories, ordered=True)
+        data = pd.Series(pd.Categorical(data, categories=categories, ordered=True))
         data = data.sort_values()
+
+    if is_comma_separated:
+        data = data.str.split(",").explode().str.strip()
 
     return data
 
@@ -217,13 +205,10 @@ def display_raw_distribution_plot(st, survey: Survey, selected_column: str) -> N
         selected_column: The column for which the plot is to be displayed.
         plot_kwargs: Additional keyword arguments for the plot.
     """
-    data = survey.data[selected_column]
-    scoring = survey.get_scoring(selected_column)
-    is_prediction = selected_column in get_prediction_columns(survey)
     plot_type = survey.get_plot_type(selected_column, "histogram")
     plot_single(
         st,
-        format_survey_data_for_plotting(data, scoring, is_prediction),
+        format_survey_data_for_plotting(survey, selected_column),
         (
             survey.get_title(selected_column)
             if plot_type in ["histogram", "histogram-categorized"]
@@ -252,26 +237,19 @@ def plot_single(
         plot_kwargs: Additional keyword arguments for the plot.
     """
     fig = None
-    data = (
-        data.str.split(",").explode().str.strip()
-        if plot_type in ["pie-categorized", "histogram-categorized"]
-        else data
-    )
 
     if plot_type in ["histogram-categorized", "histogram"]:
         fig_kwargs = {"histnorm": "percent"}
         fig_kwargs.update(plot_kwargs)
         if isinstance(data.dtype, pd.CategoricalDtype):
-            if not isinstance(data, pd.Series):
-                data = pd.Series(data)
             data_counts = data.value_counts().reindex(data.cat.categories, fill_value=0)
             x_values = data_counts.index.tolist()
             y_values = data_counts.values
             fig = px.histogram(x=x_values, y=y_values, **fig_kwargs)
-            if zoom_to_fit_categories:
+            if zoom_to_fit_categories:  # make empty categories visible as well
                 num_categories = len(x_values)
                 fig.update_xaxes(range=[-0.5, num_categories - 0.5])
-        else:
+        else:  # this was needed for other histogram types like Age for example
             fig = px.histogram(data, **fig_kwargs)
         fig.update_layout(bargap=0.2, showlegend=False)
     elif plot_type in ["pie-categorized", "pie"]:
@@ -375,17 +353,12 @@ def display_side_by_side_plot(
         comparison_datasource: The name of the second data source.
     """
     column_title = survey.get_title(column_key)
-    data = survey.data[column_key]
-    comparison_data = comparison_survey.data[column_key]
-    scoring = survey.get_scoring(column_key)
-    is_prediction = column_key in get_prediction_columns(survey)
-
     plot_side_by_side(
         st,
         column_title,
-        format_survey_data_for_plotting(data, scoring, is_prediction),
+        format_survey_data_for_plotting(survey, column_key),
         datasource,
-        format_survey_data_for_plotting(comparison_data, scoring, is_prediction),
+        format_survey_data_for_plotting(comparison_survey, column_key),
         comparison_datasource,
     )
 
@@ -408,29 +381,39 @@ def plot_side_by_side(
         datasource: The name of the first series.
         comparison_data: The second series to plot.
         comparison_datasource: The name of the second series.
-        nbins: The number of bins to use for the histogram.
+        nbins: The number of bins to use for the histogram, only applies if data is not categorical.
     """
     fig = go.Figure()
-    fig.add_trace(
-        go.Histogram(
-            x=data,
-            name=datasource,
-            marker_color="blue",
-            opacity=0.75,
-            histnorm="percent",
-            nbinsx=nbins,
-        )
-    )
-    fig.add_trace(
-        go.Histogram(
-            x=comparison_data,
-            name=comparison_datasource,
-            marker_color="red",
-            opacity=0.75,
-            histnorm="percent",
-            nbinsx=nbins,
-        )
-    )
+
+    for plot_data, plot_source, plot_color in zip(
+        [data, comparison_data],
+        [datasource, comparison_datasource],
+        ["blue", "red"],
+    ):
+        if isinstance(plot_data.dtype, pd.CategoricalDtype):
+            data_counts = plot_data.value_counts().reindex(
+                plot_data.cat.categories, fill_value=0
+            )
+            fig.add_trace(
+                go.Bar(
+                    x=plot_data.cat.categories,
+                    y=data_counts,
+                    name=plot_source,
+                    marker_color=plot_color,
+                    opacity=0.75,
+                )
+            )
+        else:
+            fig.add_trace(
+                go.Histogram(
+                    x=plot_data,
+                    name=plot_source,
+                    marker_color=plot_color,
+                    opacity=0.75,
+                    histnorm="percent",
+                    nbinsx=nbins,
+                )
+            )
 
     update_layout(
         fig,
