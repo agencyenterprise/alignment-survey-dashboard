@@ -256,19 +256,19 @@ def plot_single(
         st.plotly_chart(fig)
 
 
-def display_correlation_plot(st, survey, x_axis_column, y_axis_column) -> None:
-    """Displays a scatter plot showing the correlation between two columns within the survey data.
+def display_correlation_plot(
+    st, data: pd.DataFrame, x_axis_column, y_axis_column
+) -> None:
+    """Displays a scatter plot showing the correlation between two columns within a dataframe.
 
     Args:
         st: The Streamlit object used to render the plot.
-        survey: The Survey instance containing the survey data and metadata.
+        data: The data frame containing the columns to be plotted.
         x_axis_column: The column to be used as the x-axis.
         y_axis_column: The column to be used as the y-axis.
     """
     grouped_data = (
-        survey.data.groupby(x_axis_column)[y_axis_column]
-        .agg(["mean", "std"])
-        .reset_index()
+        data.groupby(x_axis_column)[y_axis_column].agg(["mean", "std"]).reset_index()
     )
     fig = px.scatter(
         grouped_data,
@@ -282,12 +282,12 @@ def display_correlation_plot(st, survey, x_axis_column, y_axis_column) -> None:
         title=f"Mean of {y_axis_column} with Std. Dev. vs. {x_axis_column}",
     )
 
-    coeffs = np.polyfit(survey.data[x_axis_column], survey.data[y_axis_column], 1)
-    best_fit_line = np.polyval(coeffs, survey.data[x_axis_column])
+    coeffs = np.polyfit(data[x_axis_column], data[y_axis_column], 1)
+    best_fit_line = np.polyval(coeffs, data[x_axis_column])
 
     fig.add_trace(
         go.Scatter(
-            x=survey.data[x_axis_column],
+            x=data[x_axis_column],
             y=best_fit_line,
             mode="lines",
             name="Best Fit Line",
@@ -295,7 +295,7 @@ def display_correlation_plot(st, survey, x_axis_column, y_axis_column) -> None:
         )
     )
 
-    corr, p_value = pearsonr(survey.data[x_axis_column], survey.data[y_axis_column])
+    corr, p_value = pearsonr(data[x_axis_column], data[y_axis_column])
 
     fig.update_xaxes(title_text=f"{x_axis_column} (r={corr:.2f}, p={p_value:.3g})")
 

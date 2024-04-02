@@ -302,19 +302,19 @@ def display_correlation_analysis(st, survey: Survey, key_suffix: str) -> None:
         survey: The Survey instance containing the data for analysis.
         key_suffix: A suffix to differentiate session state keys if necessary.
     """
+    numeric_data = _get_survey_numeric_data(survey)
     col1, col2 = st.columns(2)
     with col1:
         x_axis_column = st.selectbox(
-            "X Axis:", options=survey.numeric_columns, key=f"x_axis_select_{key_suffix}"
+            "X Axis:", options=numeric_data.columns, key=f"x_axis_select_{key_suffix}"
         )
     with col2:
-        y_axis_options = [col for col in survey.numeric_columns if col != x_axis_column]
+        y_axis_options = [col for col in numeric_data.columns if col != x_axis_column]
         y_axis_column = st.selectbox(
             "Y Axis:", options=y_axis_options, key=f"y_axis_select_{key_suffix}"
         )
-    plots.display_correlation_plot(st, survey, x_axis_column, y_axis_column)
-
-    plots.display_correlation_matrix(st, _get_survey_numeric_data(survey))
+    plots.display_correlation_plot(st, numeric_data, x_axis_column, y_axis_column)
+    plots.display_correlation_matrix(st, numeric_data)
 
 
 def display_raw_analysis(st, survey: Survey, key_suffix: str) -> None:
