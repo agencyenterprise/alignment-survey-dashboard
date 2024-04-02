@@ -3,11 +3,15 @@ from filter_dataframe import filter_dataframe
 from survey import Survey, concat as concat_surveys
 import plots
 import streamlit as st
+import numpy as np
 import pandas as pd
 from typing import List, Dict, Optional, Callable
 from langchain_community.chat_models import ChatOpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain.agents.agent_types import AgentType
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.metrics import mean_squared_error, accuracy_score
 from constants import (
     QUESTION_PAIRS,
     BIG_FIVE_CATEGORIES,
@@ -32,6 +36,7 @@ class AnalysisType(Enum):
     INDIVIDUAL_VS_GROUP = "Individual vs. Group"
     CORRELATION = "Correlation"
     MISCELLANEOUS = "Miscellaneous"
+    REGRESSION = "Regression"
 
 
 MISC_GRAPH_TYPES: Dict[str, Callable] = {
@@ -284,6 +289,8 @@ def handle_analysis_selection(
         display_grouped_analysis(st, graph_types, survey, key_suffix)
     elif graph_types == AnalysisType.MISCELLANEOUS.value:
         display_miscellaneous_analysis(st, survey, key_suffix)
+    elif graph_types == AnalysisType.REGRESSION.value:
+        display_regression_analysis(st, survey, key_suffix)
 
 
 def display_correlation_analysis(st, survey: Survey, key_suffix: str) -> None:
@@ -376,6 +383,53 @@ def display_miscellaneous_analysis(st, survey: Survey, key_suffix: str) -> None:
             survey,
             selected_analysis,
         )
+
+
+def display_regression_analysis(st, survey: Survey, key_suffix: str) -> None:
+    """Displays regression or classification analysis based on the user's selection of target and features.
+
+    Args:
+        st: The Streamlit module.
+        survey: The Survey instance containing the data for analysis.
+        key_suffix: A suffix to differentiate session state keys if necessary.
+    """
+    st.write("## Regression Analysis")
+    all_columns = survey.numeric_columns
+    target_column = st.selectbox(
+        "Select Target Column", options=all_columns, key=f"target_column_{key_suffix}"
+    )
+    feature_columns = st.multiselect(
+        "Select Feature Columns",
+        options=all_columns,
+        key=f"feature_columns_{key_suffix}",
+    )
+
+    if not feature_columns:
+        st.warning("Please select at least one feature column.")
+        return
+
+    X = survey.data[feature_columns]
+    y = survey.data[target_column]
+
+    if y.dtype == "object" or len(y.unique()) < 10:
+        model = LogisticRegression(max_iter=1000)
+        is_regression = False
+    else:
+        model = LinearRegression()
+        is_regression = True
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    model.fit(X_train, y_train)
+    predictions = model.predict(X_test)
+    if is_regression:
+        accuracy = np.sqrt(mean_squared_error(y_test, predictions))
+        st.write(f"Root Mean Squared Error: {accuracy}")
+    else:
+        accuracy = accuracy_score(y_test, predictions, normalize=True)
+        st.write(f"Accuracy score: {accuracy}")
 
 
 def display_selected_plot(st, survey: Survey, selected_column: str) -> None:
