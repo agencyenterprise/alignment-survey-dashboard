@@ -29,10 +29,10 @@ def display_grouped_distribution_plot(st, survey: Survey, category: str) -> None
     """
     category_cols = get_category_columns(survey, category)
     transformed_data = transform_survey_data(survey, category_cols)
-    survey.data[category] = transformed_data.mean(axis=1)
+    distribution = transformed_data.mean(axis=1)
     plot_single(
         st,
-        survey.data[category],
+        distribution,
         category,
         "histogram",
         {"nbins": 10, "histnorm": "percent"},
@@ -331,6 +331,38 @@ def display_correlation_matrix(st, survey: Survey) -> None:
     fig.update_yaxes(showticklabels=False)
 
     fig.update_layout(title_text="Correlation Matrix", title_x=0.0)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def display_grouped_correlation_matrix(st, survey: Survey) -> None:
+    """Displays a correlation matrix for the mean distribution values of different categories within the survey.
+
+    Args:
+        st: The Streamlit object used to render the plot.
+        survey: The Survey instance containing the survey data and metadata.
+    """
+    category_means = pd.DataFrame()
+    for category in (BIG_FIVE_CATEGORIES | MORAL_FOUNDATIONS_CATEGORIES).values():
+        category_cols = get_category_columns(survey, category)
+        transformed_data = transform_survey_data(survey, category_cols)
+        distribution = transformed_data.mean(axis=1)
+        category_means[category] = distribution
+
+    corr_matrix = category_means.corr()
+
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=corr_matrix,
+            x=corr_matrix.columns,
+            y=corr_matrix.index,
+            hoverongaps=False,
+            colorscale="Viridis",
+        )
+    )
+
+    fig.update_layout(title_text="Grouped Correlation Matrix", title_x=0.0)
+    fig.update_yaxes(autorange="reversed")
+
     st.plotly_chart(fig, use_container_width=True)
 
 
