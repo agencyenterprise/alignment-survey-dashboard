@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import re
 from typing import Optional, Tuple, List
 from constants import (
@@ -7,6 +8,9 @@ from constants import (
     BIG_FIVE_COLUMNS,
     BIG_FIVE_CATEGORIES,
     MORAL_FOUNDATIONS_CATEGORIES,
+    PREDICTIONS_MAPPING,
+    FLIPPED_DELAY_DISCOUNTING_SCORES,
+    K_VALUES,
 )
 
 
@@ -160,6 +164,18 @@ class Survey:
             if re.match(rf"{category_key}\d", self.get_question_id(col, ""))
         ]
 
+    def get_delay_discounting_columns(self) -> List[str]:
+        """Retrieves the columns corresponding to delay discounting questions within the survey data.
+
+        Returns:
+            A list of column names corresponding to delay discounting questions.
+        """
+        return [
+            col
+            for col in self.data.columns
+            if self.get_question_id(col, "").startswith("delaydiscounting")
+        ]
+
     def get_category_data_distribution(self, category_cols: List[str]) -> pd.Series:
         """Converts category columns to numeric values and applies reverse scoring where necessary.
         Then calculates the mean of the transformed data across the specified category columns.
@@ -176,6 +192,66 @@ class Survey:
             if self.get_scoring(col) == "reverse":
                 transformed_data[col] = transformed_data[col].apply(lambda x: 6 - x)
         return transformed_data.mean(axis=1)
+
+    def get_numeric_data(self) -> pd.DataFrame:
+        """Returns the numeric data from the survey.
+        Converts the categorical data to numeric data using the PREDICTIONS_MAPPING.
+        Adds group distribution columns for each category in the survey.
+        Calculates k-values for delay discounting questions.
+
+        Args:
+            survey: The Survey instance containing the data for analysis.
+
+        Returns:
+            The numeric data from the survey.
+        """
+        numeric_data = self.data.copy()
+        numeric_data = numeric_data[self.numeric_columns]
+
+        prediction_columns = self.get_prediction_columns()
+        for col in prediction_columns:
+            numeric_data[col] = self.data[col].map(
+                {v: k for k, v in PREDICTIONS_MAPPING.items()}
+            )
+
+        group_distribution_columns = [
+            f"Overall Distribution for {category_name}"
+            for category_name in (
+                set(
+                    [
+                        category_name
+                        for category_name in (
+                            BIG_FIVE_CATEGORIES | MORAL_FOUNDATIONS_CATEGORIES
+                        ).values()
+                    ]
+                )
+            )
+        ]
+        for col in group_distribution_columns:
+            category = col.split("for ")[1]
+            category_cols = self.get_category_columns(category)
+            numeric_data[col] = self.get_category_data_distribution(category_cols)
+
+        numeric_data["k-value"] = self.get_k_values()
+
+        return numeric_data
+
+    def get_k_values(self):
+        def calculate_k(row, k_values_dict):
+            """Calculates the k value for a given row of delay discounting responses."""
+            ks = [k_values_dict[col]["1"] for col in row.index if row[col] == 1]
+            return (
+                np.mean(ks) if ks else np.nan
+            )  # Return NaN if there are no choices for delayed reward
+
+        dd_columns = self.get_delay_discounting_columns()
+        dd_df = self.data[dd_columns]
+        dd_df.columns = [self.get_question_id(col, "") for col in dd_df.columns]
+
+        for col in dd_df.columns:
+            dd_df[col] = dd_df[col].map(FLIPPED_DELAY_DISCOUNTING_SCORES).astype(int)
+
+        return dd_df.apply(lambda row: calculate_k(row, K_VALUES), axis=1)
 
     @classmethod
     def from_file(cls, file_path: str) -> "Survey":

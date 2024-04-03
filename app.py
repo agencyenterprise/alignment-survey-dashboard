@@ -16,7 +16,6 @@ from constants import (
     QUESTION_PAIRS,
     BIG_FIVE_CATEGORIES,
     MORAL_FOUNDATIONS_CATEGORIES,
-    PREDICTIONS_MAPPING,
 )
 
 
@@ -302,14 +301,15 @@ def display_correlation_analysis(st, survey: Survey, key_suffix: str) -> None:
         survey: The Survey instance containing the data for analysis.
         key_suffix: A suffix to differentiate session state keys if necessary.
     """
-    numeric_data = _get_survey_numeric_data(survey)
+    numeric_data = survey.get_numeric_data()
+    xy_columns = [col for col in numeric_data.columns if col not in ["k-value"]]
     col1, col2 = st.columns(2)
     with col1:
         x_axis_column = st.selectbox(
-            "X Axis:", options=numeric_data.columns, key=f"x_axis_select_{key_suffix}"
+            "X Axis:", options=xy_columns, key=f"x_axis_select_{key_suffix}"
         )
     with col2:
-        y_axis_options = [col for col in numeric_data.columns if col != x_axis_column]
+        y_axis_options = [col for col in xy_columns if col != x_axis_column]
         y_axis_column = st.selectbox(
             "Y Axis:", options=y_axis_options, key=f"y_axis_select_{key_suffix}"
         )
@@ -384,47 +384,6 @@ def display_miscellaneous_analysis(st, survey: Survey, key_suffix: str) -> None:
         )
 
 
-def _get_survey_numeric_data(survey: Survey) -> pd.DataFrame:
-    """Returns the numeric data from the survey.
-    Converts the categorical data to numeric data using the PREDICTIONS_MAPPING.
-    Adds group distribution columns for each category in the survey.
-
-    Args:
-        survey: The Survey instance containing the data for analysis.
-
-    Returns:
-        The numeric data from the survey.
-    """
-    numeric_data = survey.data.copy()
-    numeric_data = numeric_data[survey.numeric_columns]
-
-    prediction_columns = survey.get_prediction_columns()
-    for col in prediction_columns:
-        numeric_data[col] = survey.data[col].map(
-            {v: k for k, v in PREDICTIONS_MAPPING.items()}
-        )
-
-    group_distribution_columns = [
-        f"Overall Distribution for {category_name}"
-        for category_name in (
-            set(
-                [
-                    category_name
-                    for category_name in (
-                        BIG_FIVE_CATEGORIES | MORAL_FOUNDATIONS_CATEGORIES
-                    ).values()
-                ]
-            )
-        )
-    ]
-    for col in group_distribution_columns:
-        category = col.split("for ")[1]
-        category_cols = survey.get_category_columns(category)
-        numeric_data[col] = survey.get_category_data_distribution(category_cols)
-
-    return numeric_data
-
-
 def display_regression_analysis(st, survey: Survey, key_suffix: str) -> None:
     """Displays regression or classification analysis based on the user's selection of target and features.
 
@@ -435,7 +394,7 @@ def display_regression_analysis(st, survey: Survey, key_suffix: str) -> None:
     """
     st.write("## Regression Analysis")
 
-    regression_data = _get_survey_numeric_data(survey)
+    regression_data = survey.get_numeric_data()
 
     target_column = st.selectbox(
         "Select Target Column",

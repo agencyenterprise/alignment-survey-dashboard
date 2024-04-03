@@ -537,12 +537,7 @@ def display_delay_discounting_k_values(
         dd_df["k"] = dd_df.apply(lambda row: calculate_k(row, K_VALUES), axis=1)
         return dd_df["k"]
 
-    dd_columns = [
-        col
-        for col in survey.data.columns
-        if survey.get_question_id(col, "").startswith("delaydiscounting")
-    ]
-
+    dd_columns = survey.get_delay_discounting_columns()
     dd_k_values = get_k_values(survey.data, dd_columns)
     if comparison_survey:
         comparison_dd_k_values = get_k_values(comparison_survey.data, dd_columns)
