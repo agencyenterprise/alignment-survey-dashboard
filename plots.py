@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, mannwhitneyu
+import scipy.stats as stats
 from constants import (
     SCORING_MAPPING,
     BIG_FIVE_CATEGORIES,
@@ -296,28 +297,79 @@ def display_correlation_plot(
     )
 
     corr, p_value = pearsonr(data[x_axis_column], data[y_axis_column])
-
     fig.update_xaxes(title_text=f"{x_axis_column} (r={corr:.2f}, p={p_value:.3g})")
 
     st.plotly_chart(fig)
 
 
+def split_text(text, max_length=100):
+    """Splits text into multiple lines if longer than max_length, trying to break at spaces."""
+    if len(text) <= max_length:
+        return text
+    else:
+        words = text.split(" ")
+        split_text = ""
+        current_line = ""
+        for word in words:
+            if len(current_line + " " + word) <= max_length:
+                current_line += " " + word if current_line else word
+            else:
+                split_text += current_line + "<br>"
+                current_line = word
+        split_text += current_line
+        return split_text
+
+
 def display_correlation_matrix(st, dataframe: pd.DataFrame) -> None:
-    """Displays a correlation matrix for the given data frame.
+    """Displays a correlation matrix with p-values for the given data frame, handling NaNs and infs.
 
     Args:
         st: The Streamlit module.
         dataframe: The data frame for which the correlation matrix is to be displayed.
     """
-    corr_matrix = dataframe.corr()
+    cleaned_df = dataframe.replace([np.inf, -np.inf], np.nan).dropna()
+
+    corr_matrix = np.zeros((cleaned_df.shape[1], cleaned_df.shape[1]))
+    p_values_matrix = np.zeros((cleaned_df.shape[1], cleaned_df.shape[1]))
+
+    for i, column1 in enumerate(cleaned_df.columns):
+        for j, column2 in enumerate(cleaned_df.columns):
+            if i <= j:
+                corr, p_value = stats.pearsonr(cleaned_df[column1], cleaned_df[column2])
+                corr_matrix[i, j] = corr
+                corr_matrix[j, i] = corr  # Symmetric matrix
+                p_values_matrix[i, j] = p_value
+                p_values_matrix[j, i] = p_value  # Symmetric matrix
+            else:
+                # Upper triangle already computed
+                continue
+
+    corr_df = pd.DataFrame(
+        corr_matrix, index=cleaned_df.columns, columns=cleaned_df.columns
+    )
+    p_values_df = pd.DataFrame(
+        p_values_matrix, index=cleaned_df.columns, columns=cleaned_df.columns
+    )
+
+    hovertext = list()
+    for yi, yy in enumerate(corr_df.index):
+        hovertext.append(list())
+        for xi, xx in enumerate(corr_df.columns):
+            formatted_xx = split_text(xx)  # Split x if too long
+            formatted_yy = split_text(yy)  # Split y if too long
+            hovertext[-1].append(
+                f"x: {formatted_xx}<br>y: {formatted_yy}<br>r: {corr_df.iloc[yi, xi]:.2f}<br>p-value: {p_values_df.iloc[yi, xi]:.4f}"
+            )
 
     fig = go.Figure(
         data=go.Heatmap(
-            z=corr_matrix,
-            x=corr_matrix.columns,
-            y=corr_matrix.index,
+            z=corr_df.to_numpy(),
+            x=corr_df.columns,
+            y=corr_df.index,
             hoverongaps=False,
             colorscale="Viridis",
+            hoverinfo="text",
+            text=hovertext,
         )
     )
 
@@ -413,7 +465,7 @@ def plot_side_by_side(
 
     fig.update_layout(
         title=title,
-        yaxis_title="Percentage",
+        yaxis_title="percent",
         legend_title="Dataset",
         barmode="group",
     )
@@ -519,40 +571,21 @@ def display_delay_discounting_k_values(
         comparison_datasource: The name of the second data source.
     """
 
-    def calculate_k(row, k_values_dict):
-        """Calculates the k value for a given row of delay discounting responses."""
-        ks = [k_values_dict[col]["1"] for col in row.index if row[col] == 1]
-        return (
-            np.mean(ks) if ks else np.nan
-        )  # Return NaN if there are no choices for delayed reward
-
-    def get_k_values(df, dd_columns):
-        """Calculates the k value of delay discounting responses for each participant."""
-        dd_df = df[dd_columns]
-        dd_df.columns = [survey.get_question_id(col, "") for col in dd_df.columns]
-
-        for col in dd_df.columns:
-            dd_df[col] = dd_df[col].map(FLIPPED_DELAY_DISCOUNTING_SCORES).astype(int)
-
-        dd_df["k"] = dd_df.apply(lambda row: calculate_k(row, K_VALUES), axis=1)
-        return dd_df["k"]
-
-    dd_columns = survey.get_delay_discounting_columns()
-    dd_k_values = get_k_values(survey.data, dd_columns)
+    k_values = survey.get_k_values()
     if comparison_survey:
-        comparison_dd_k_values = get_k_values(comparison_survey.data, dd_columns)
+        comparison_k_values = comparison_survey.get_k_values()
         plot_side_by_side(
             st,
             "Distribution of k Values in Delay Discounting Responses",
-            dd_k_values,
+            k_values,
             datasource or "A",
-            comparison_dd_k_values,
+            comparison_k_values,
             comparison_datasource or "B",
         )
     else:
         plot_single(
             st,
-            dd_k_values,
+            k_values,
             "Distribution of k Values in Delay Discounting Responses",
             "histogram",
         )
@@ -579,20 +612,7 @@ def update_layout(
         layout_opts: Additional layout options as a dictionary.
     """
     if title:
-        max_length = 100
-        if len(title) > max_length:
-            words = title.split()
-            title_with_breaks = ""
-            current_line_length = 0
-            for word in words:
-                if current_line_length + len(word) <= max_length:
-                    title_with_breaks += word + " "
-                    current_line_length += len(word) + 1
-                else:
-                    title_with_breaks += "<br>" + word + " "
-                    current_line_length = len(word) + 1
-
-            title = title_with_breaks.rstrip()
+        title = split_text(title)
 
     layout_update = {
         "title": {"text": title},
