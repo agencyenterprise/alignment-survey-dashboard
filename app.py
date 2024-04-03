@@ -219,6 +219,7 @@ def display_side_by_side_analysis(
                 comparison_survey,
                 datasource,
                 comparison_datasource,
+                show_descriptive_stats,
             )
         elif selected_analysis_type == AnalysisType.MISCELLANEOUS.value:
             if graph.endswith(" Variance in Delay Discounting Responses"):
