@@ -387,6 +387,17 @@ def display_correlation_matrix(st, dataframe: pd.DataFrame) -> None:
     st.plotly_chart(fig, use_container_width=True)
 
 
+def format_applied_filters(datasource, applied_filters, max_words=20, max_length=50):
+    concatenated_filters = ", ".join(
+        applied_filter["column"] for applied_filter in applied_filters
+    )
+    if len(concatenated_filters) > max_length:
+        concatenated_filters = concatenated_filters[:max_length] + "..."
+
+    formatted_filters = split_text(concatenated_filters, max_words)
+    return f"{datasource} ({formatted_filters})" if formatted_filters else datasource
+
+
 def display_side_by_side_plot(
     st,
     column_key: str,
@@ -412,9 +423,11 @@ def display_side_by_side_plot(
         st,
         column_title,
         format_survey_data_for_plotting(survey, column_key),
-        datasource,
+        format_applied_filters(datasource, survey.applied_filters),
         format_survey_data_for_plotting(comparison_survey, column_key),
-        comparison_datasource,
+        format_applied_filters(
+            comparison_datasource, comparison_survey.applied_filters
+        ),
         return_fig=True,
     )
 
@@ -433,8 +446,8 @@ def display_side_by_side_plot(
         )
 
         stats_text = (
-            f"{datasource} Mean: {mean1:.2f}, Std. Dev.: {std1:.2f}<br>"
-            f"{comparison_datasource} Mean: {mean2:.2f}, Std. Dev.: {std2:.2f}<br>"
+            f"{format_applied_filters(datasource, survey.applied_filters, max_words=100)} Mean: {mean1:.2f}, Std. Dev.: {std1:.2f}<br>"
+            f"{format_applied_filters(comparison_datasource, comparison_survey.applied_filters, max_words=100)} Mean: {mean2:.2f}, Std. Dev.: {std2:.2f}<br>"
             f"Mann-Whitney U: {u_stat}, p-value: {p_value:.4f}"
         )
 
@@ -479,10 +492,6 @@ def plot_side_by_side(
         return_fig: Whether to return the Plotly figure object.
     """
     fig = go.Figure()
-
-    if datasource == comparison_datasource:
-        datasource = f"{datasource} (Side 1)"
-        comparison_datasource = f"{comparison_datasource} (Side 2)"
 
     for plot_data, plot_source, plot_color in zip(
         [data, comparison_data],
@@ -551,9 +560,11 @@ def display_side_by_side_grouped_distribution_plot(
         st,
         category,
         survey.get_category_data_distribution(category_cols),
-        datasource,
+        format_applied_filters(datasource, survey.applied_filters),
         comparison_survey.get_category_data_distribution(category_cols),
-        comparison_datasource,
+        format_applied_filters(
+            comparison_datasource, comparison_survey.applied_filters
+        ),
         nbins=10,
     )
 

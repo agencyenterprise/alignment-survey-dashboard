@@ -37,6 +37,7 @@ class Survey:
         """Initializes the Survey with data and metadata, applying necessary transformations."""
         self.metadata = metadata
         self.data = data
+        self.applied_filters = []
 
         for col in data.columns:
             if self.get_scoring(col) is not None:

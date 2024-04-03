@@ -165,11 +165,17 @@ def display_side_by_side_analysis(
         st: The Streamlit module.
         key_suffix: A suffix to differentiate session state keys if necessary.
     """
-    survey.data = filter_dataframe(survey.data, scope=datasource, key_suffix=key_suffix)
+    survey.data = filter_dataframe(
+        survey.data,
+        scope=datasource,
+        key_suffix=key_suffix,
+        applied_filters=survey.applied_filters,
+    )
     comparison_survey.data = filter_dataframe(
         comparison_survey.data,
         scope=comparison_datasource,
         key_suffix=f"comparison_{key_suffix}",
+        applied_filters=comparison_survey.applied_filters,
     )
 
     analysis_types = [
@@ -254,7 +260,12 @@ def display_standard_analysis(
         st: The Streamlit module.
         key_suffix: A suffix to differentiate session state keys if necessary
     """
-    survey.data = filter_dataframe(survey.data, scope=datasource, key_suffix=key_suffix)
+    survey.data = filter_dataframe(
+        survey.data,
+        scope=datasource,
+        key_suffix=key_suffix,
+        applied_filters=survey.applied_filters,
+    )
 
     all_graphs = [state.value for state in AnalysisType]
     graph_types = st.selectbox(

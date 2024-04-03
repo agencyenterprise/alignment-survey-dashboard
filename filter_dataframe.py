@@ -1,5 +1,3 @@
-# Originally copied from https://github.com/tylerjrichards/st-filter-dataframe/blob/main/streamlit_app.py
-# Adapted for multiple filters support
 import pandas as pd
 import streamlit as st
 from pandas.api.types import (
@@ -9,14 +7,15 @@ from pandas.api.types import (
 )
 
 
-def filter_dataframe(df: pd.DataFrame, scope: str, key_suffix: str) -> pd.DataFrame:
+def filter_dataframe(
+    df: pd.DataFrame, scope: str, key_suffix: str, applied_filters: list
+) -> pd.DataFrame:
     """
     Adds a UI on top of a dataframe to let viewers filter columns with the ability to add multiple filters.
-
     Args:
         df (pd.DataFrame): Original dataframe
         key_suffix (str): Suffix for unique session state keys
-
+        applied_filters (list): List to store the details of applied filters
     Returns:
         pd.DataFrame: Filtered dataframe
     """
@@ -44,21 +43,22 @@ def filter_dataframe(df: pd.DataFrame, scope: str, key_suffix: str) -> pd.DataFr
             selected_column = st.selectbox(
                 "Filter dataframe on", df.columns, key=f"{key_suffix}_filter_col_{i}"
             )
-            df = apply_filter_to_column(df, selected_column, key_suffix, i)
+            df = apply_filter_to_column(
+                df, selected_column, key_suffix, i, applied_filters
+            )
 
     return df
 
 
-def apply_filter_to_column(df, column, key_suffix, filter_id):
+def apply_filter_to_column(df, column, key_suffix, filter_id, applied_filters):
     """
     Apply user-defined filter to a column in the dataframe and return the filtered dataframe.
-
     Args:
         df (pd.DataFrame): Dataframe to filter
         column (str): Column name to apply filter on
         key_suffix (str): Suffix for unique session state keys
         filter_id (int): Identifier for the filter, used for session state keys
-
+        applied_filters (list): List to store the details of applied filters
     Returns:
         pd.DataFrame: The filtered dataframe
     """
@@ -74,6 +74,9 @@ def apply_filter_to_column(df, column, key_suffix, filter_id):
             key=f"{key_suffix}_{filter_id}_cat_input",
         )
         filtered_df = filtered_df[filtered_df[column].isin(user_cat_input)]
+        applied_filters.append(
+            {"column": column, "type": "categorical", "value": user_cat_input}
+        )
     elif is_numeric_dtype(df[column]):
         _min = float(df[column].min())
         _max = float(df[column].max())
@@ -87,6 +90,9 @@ def apply_filter_to_column(df, column, key_suffix, filter_id):
             key=f"{key_suffix}_{filter_id}_num_input",
         )
         filtered_df = filtered_df[filtered_df[column].between(*user_num_input)]
+        applied_filters.append(
+            {"column": column, "type": "numeric", "value": user_num_input}
+        )
     elif is_datetime64_any_dtype(df[column]):
         user_date_input = right.date_input(
             f"Values for {column}",
@@ -99,6 +105,9 @@ def apply_filter_to_column(df, column, key_suffix, filter_id):
             filtered_df = filtered_df.loc[
                 filtered_df[column].between(start_date, end_date)
             ]
+            applied_filters.append(
+                {"column": column, "type": "date", "value": user_date_input}
+            )
     else:
         user_text_input = right.text_input(
             f"Substring or regex in {column}",
@@ -108,5 +117,8 @@ def apply_filter_to_column(df, column, key_suffix, filter_id):
             filtered_df = filtered_df[
                 filtered_df[column].str.contains(user_text_input, na=False)
             ]
+            applied_filters.append(
+                {"column": column, "type": "text", "value": user_text_input}
+            )
 
     return filtered_df
