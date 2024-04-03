@@ -8,3 +8,5 @@ openai
 tabulate
 scipy
 scikit-learn
+kaleido
+reportlab

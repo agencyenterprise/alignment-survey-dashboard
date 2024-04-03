@@ -222,6 +222,7 @@ def plot_single(
     plot_type: str = "histogram",
     plot_kwargs: Dict = {},
     zoom_to_fit_categories: bool = False,
+    return_fig: bool = False,
 ) -> None:
     """Displays a standard plot for a selected column within the survey data.
 
@@ -231,6 +232,8 @@ def plot_single(
         series_name: The name of the series to be displayed.
         plot_type: The type of plot to display (e.g., 'histogram', 'pie').
         plot_kwargs: Additional keyword arguments for the plot.
+        zoom_to_fit_categories: Whether to zoom to fit categories for the plot in order to make empty categories visible.
+        return_fig: Whether to return the Plotly figure object.
     """
     fig = None
 
@@ -254,7 +257,10 @@ def plot_single(
 
     if fig:
         update_layout(fig, series_name, xaxis_title="", yaxis_title="percent")
-        st.plotly_chart(fig)
+        if return_fig:
+            return fig
+        else:
+            st.plotly_chart(fig)
 
 
 def display_correlation_plot(

@@ -1,2 +1,6 @@
 .env
+.DS_Store
 venv/
+emails/
+alignment_data_original.csv
+ea_data_original.csv

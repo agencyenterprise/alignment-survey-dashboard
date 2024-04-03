@@ -253,6 +253,15 @@ class Survey:
 
         return dd_df.apply(lambda row: calculate_k(row, K_VALUES), axis=1)
 
+    def merge_emails(self, emails: pd.DataFrame):
+        """Merges the survey data with the email addresses provided in the emails DataFrame.
+        Args:
+            emails: A DataFrame containing email addresses.
+        """
+        adjusted_emails = pd.concat([emails], ignore_index=True)
+        adjusted_emails = adjusted_emails.iloc[: len(self.data)]
+        self.data["Email"] = adjusted_emails.iloc[:, 0].values
+
     @classmethod
     def from_file(cls, file_path: str) -> "Survey":
         """Constructs a Survey instance from a CSV file."""
