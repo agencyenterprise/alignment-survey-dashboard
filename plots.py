@@ -474,6 +474,10 @@ def plot_side_by_side(
     """
     fig = go.Figure()
 
+    if datasource == comparison_datasource:
+        datasource = f"{datasource} (Side 1)"
+        comparison_datasource = f"{comparison_datasource} (Side 2)"
+
     for plot_data, plot_source, plot_color in zip(
         [data, comparison_data],
         [datasource, comparison_datasource],
