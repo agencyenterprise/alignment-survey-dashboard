@@ -388,6 +388,7 @@ def display_side_by_side_plot(
     comparison_survey: Survey,
     datasource: str,
     comparison_datasource: str,
+    show_descriptive_stats: bool = False,
 ) -> None:
     """Displays a side-by-side histogram plot comparing the same column from two different surveys.
 
@@ -398,16 +399,55 @@ def display_side_by_side_plot(
         comparison_survey: The second Survey instance to compare against.
         datasource: The name of the first data source.
         comparison_datasource: The name of the second data source.
+        show_descriptive_stats: Whether to display descriptive statistics for the data.
     """
     column_title = survey.get_title(column_key)
-    plot_side_by_side(
+    fig = plot_side_by_side(
         st,
         column_title,
         format_survey_data_for_plotting(survey, column_key),
         datasource,
         format_survey_data_for_plotting(comparison_survey, column_key),
         comparison_datasource,
+        return_fig=True,
     )
+
+    if (
+        show_descriptive_stats
+        and pd.to_numeric(survey.data[column_key], errors="coerce").notnull().all()
+    ):
+        survey_data = survey.data[column_key].dropna()
+        comparison_data = comparison_survey.data[column_key].dropna()
+
+        mean1, std1 = survey_data.mean(), survey_data.std()
+        mean2, std2 = comparison_data.mean(), comparison_data.std()
+
+        u_stat, p_value = mannwhitneyu(
+            survey_data, comparison_data, alternative="two-sided"
+        )
+
+        stats_text = (
+            f"{datasource} Mean: {mean1:.2f}, Std. Dev.: {std1:.2f}<br>"
+            f"{comparison_datasource} Mean: {mean2:.2f}, Std. Dev.: {std2:.2f}<br>"
+            f"Mann-Whitney U: {u_stat}, p-value: {p_value:.4f}"
+        )
+
+        fig.add_annotation(
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=-0.5,
+            showarrow=False,
+            text=stats_text,
+            align="left",
+            font=dict(size=12),
+            borderwidth=1,
+            borderpad=4,
+        )
+
+        fig.update_layout(margin=dict(b=120))
+
+    st.plotly_chart(fig, use_container_width=True)
 
 
 def plot_side_by_side(
@@ -418,6 +458,7 @@ def plot_side_by_side(
     comparison_data: pd.Series,
     comparison_datasource: str,
     nbins: int = 0,
+    return_fig: bool = False,
 ):
     """Plots two histograms side by side for comparison.
 
@@ -429,6 +470,7 @@ def plot_side_by_side(
         comparison_data: The second series to plot.
         comparison_datasource: The name of the second series.
         nbins: The number of bins to use for the histogram, only applies if data is not categorical.
+        return_fig: Whether to return the Plotly figure object.
     """
     fig = go.Figure()
 
@@ -469,7 +511,10 @@ def plot_side_by_side(
         legend_title="Dataset",
         barmode="group",
     )
-    st.plotly_chart(fig)
+    if return_fig:
+        return fig
+    else:
+        st.plotly_chart(fig, use_container_width=True)
 
 
 def display_side_by_side_grouped_distribution_plot(

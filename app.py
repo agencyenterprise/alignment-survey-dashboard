@@ -199,6 +199,10 @@ def display_side_by_side_analysis(
 
     selected_graphs = select_graphs(st, f"comparison_select_{key_suffix}", graphs)
 
+    show_descriptive_stats = st.checkbox(
+        "Show Descriptive Statistics", key=f"show_descriptive_stats_{key_suffix}"
+    )
+
     for graph in selected_graphs:
         if selected_analysis_type == AnalysisType.GROUPED.value:
             category = graph.split("for ")[1]
@@ -235,6 +239,7 @@ def display_side_by_side_analysis(
                 comparison_survey,
                 datasource,
                 comparison_datasource,
+                show_descriptive_stats,
             )
 
 
