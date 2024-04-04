@@ -37,7 +37,11 @@ def display_grouped_distribution_plot(st, survey: Survey, category: str) -> None
 
 
 def display_individual_vs_community_plot(
-    st, survey: Survey, individual_q: str, community_q: str
+    st,
+    survey: Survey,
+    individual_q: str,
+    community_q: str,
+    show_descriptive_stats: bool,
 ) -> None:
     """Displays a plot comparing individual versus community responses for given questions.
 
@@ -46,15 +50,53 @@ def display_individual_vs_community_plot(
         survey: The Survey instance containing the survey data and metadata.
         individual_q: The column name for individual responses.
         community_q: The column name for community responses.
+        show_descriptive_stats: Whether to display descriptive statistics for the data.
     """
-    plot_side_by_side(
+    fig = plot_side_by_side(
         st,
         survey.get_title(individual_q),
         format_survey_data_for_plotting(survey, individual_q),
         "Ground truth",
         format_survey_data_for_plotting(survey, community_q),
         "Predictions",
+        return_fig=True,
     )
+
+    if (
+        show_descriptive_stats
+        and pd.to_numeric(survey.data[individual_q], errors="coerce").notnull().all()
+    ):
+        survey_data = survey.data[individual_q].dropna()
+        comparison_data = survey.data[community_q].dropna()
+
+        mean1, std1 = survey_data.mean(), survey_data.std()
+        mean2, std2 = comparison_data.mean(), comparison_data.std()
+
+        u_stat, p_value = mannwhitneyu(
+            survey_data, comparison_data, alternative="two-sided"
+        )
+
+        stats_text = (
+            f"Ground truth Mean: {mean1:.2f}, Std. Dev.: {std1:.2f}<br>"
+            f"Predictions Mean: {mean2:.2f}, Std. Dev.: {std2:.2f}<br>"
+            f"Mann-Whitney U: {u_stat}, p-value: {p_value:.4f}"
+        )
+
+        fig.add_annotation(
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=-0.5,
+            showarrow=False,
+            text=stats_text,
+            align="left",
+            font=dict(size=12),
+            borderwidth=1,
+            borderpad=4,
+        )
+
+        fig.update_layout(margin=dict(b=120))
+    st.plotly_chart(fig, use_container_width=True)
 
 
 def display_group_mean_std_graph(st, survey: Survey, group_name: str) -> None:

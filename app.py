@@ -370,11 +370,19 @@ def display_grouped_analysis(
         st, key_suffix, get_graphs_for_analysis(graph_types, survey)
     )
 
+    if graph_types == AnalysisType.INDIVIDUAL_VS_GROUP.value:
+        show_descriptive_stats = st.checkbox(
+            "Show Descriptive Statistics", key=f"show_descriptive_stats_{key_suffix}"
+        )
+    else:
+        show_descriptive_stats = False
+
     for selected_column in selected_columns:
         display_selected_plot(
             st,
             survey,
             selected_column,
+            show_descriptive_stats,
         )
 
 
@@ -453,13 +461,16 @@ def display_regression_analysis(st, survey: Survey, key_suffix: str) -> None:
         st.write(f"Accuracy score: {accuracy}")
 
 
-def display_selected_plot(st, survey: Survey, selected_column: str) -> None:
+def display_selected_plot(
+    st, survey: Survey, selected_column: str, show_descriptive_stats: bool = False
+) -> None:
     """Displays the plot for a selected column or analysis type.
 
     Args:
         st: The Streamlit module.
         survey: The Survey instance containing the data for analysis.
         selected_column: The column or analysis type selected for plotting.
+        show_descriptive_stats: Whether to display descriptive statistics.
     """
     if selected_column in MISC_GRAPH_TYPES.keys():
         if selected_column.endswith(" Traits with Std. Dev."):
@@ -480,7 +491,7 @@ def display_selected_plot(st, survey: Survey, selected_column: str) -> None:
         )
         community_q = QUESTION_PAIRS.get(individual_q)
         plots.display_individual_vs_community_plot(
-            st, survey, individual_q, community_q
+            st, survey, individual_q, community_q, show_descriptive_stats
         )
     elif selected_column.startswith("Overall Distribution for"):
         category = selected_column.split("for ")[1]
