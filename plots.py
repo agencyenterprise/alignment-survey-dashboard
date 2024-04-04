@@ -51,9 +51,9 @@ def display_individual_vs_community_plot(
         st,
         survey.get_title(individual_q),
         format_survey_data_for_plotting(survey, individual_q),
-        "Individual",
+        "Ground truth",
         format_survey_data_for_plotting(survey, community_q),
-        "Community",
+        "Predictions",
     )
 
 
@@ -555,7 +555,8 @@ def plot_side_by_side(
                 )
             )
 
-    fig.update_layout(
+    update_layout(
+        fig,
         title=title,
         yaxis_title="percent",
         legend_title="Dataset",

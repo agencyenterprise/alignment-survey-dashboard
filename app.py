@@ -32,7 +32,7 @@ class AnalysisType(Enum):
 
     RAW = "Raw Distribution"
     GROUPED = "Grouped Distribution"
-    INDIVIDUAL_VS_GROUP = "Individual vs. Group"
+    INDIVIDUAL_VS_GROUP = "Ground truth vs. predictions"
     CORRELATION = "Correlation"
     MISCELLANEOUS = "Miscellaneous"
     REGRESSION = "Regression"
