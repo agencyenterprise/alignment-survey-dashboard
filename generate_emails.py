@@ -8,7 +8,7 @@ import os
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
-from constants import ALIGNMENT_QUESTION_PAIRS, EA_QUESTION_PAIRS
+from constants import ALIGNMENT_QUESTION_PAIRS, EA_QUESTION_PAIRS, SCORING_MAPPING
 from typing import List, BinaryIO
 
 
@@ -55,34 +55,53 @@ def _get_survey_with_emails(survey: Survey, original_csv_path: str) -> Survey:
     return survey
 
 
-def _get_plot_images(survey: Survey) -> List[ImageReader]:
-    """Generate plot images from the survey data.
+def _get_plot_images(survey: Survey, email: str) -> List[ImageReader]:
+    """Generate plot images from the survey data, highlighting the value corresponding to a specific email.
 
     Args:
         survey (Survey): The survey object containing the data to be plotted.
+        email (str): The email address used to identify the specific row to highlight.
 
     Returns:
         List[ImageReader]: A list of ImageReader objects for the generated plot images.
     """
     images = []
     data = survey.get_numeric_data()
+    highlight_value = None
+
+    highlight_value = survey.data.loc[survey.data["Email"] == email]
+    mini_survey = Survey(data=highlight_value, metadata=survey.metadata)
+    mini_data = mini_survey.get_numeric_data()
 
     for column in data.columns:
-        if column in (ALIGNMENT_QUESTION_PAIRS | EA_QUESTION_PAIRS).keys():
+        if column.startswith("Overall Distribution for"):
+            plot_kwargs = {
+                "nbins": 10,
+                "highlight_value": mini_data[column].iloc[0],
+                "highlight_color": "red",
+            }
             fig = plots.plot_single(
-                None,
-                plots.format_survey_data_for_plotting(survey, column),
-                column,
-                return_fig=True,
+                None, data[column], column, plot_kwargs=plot_kwargs, return_fig=True
             )
             buf = io.BytesIO()
             fig.write_image(buf, format="png")
             images.append(ImageReader(buf))
 
     for column in data.columns:
-        if column.startswith("Overall Distribution for"):
+        if column in (ALIGNMENT_QUESTION_PAIRS | EA_QUESTION_PAIRS).keys():
+            formatted_data = plots.format_survey_data_for_plotting(survey, column)
+            plot_kwargs = {}
+            if highlight_value is not None and column in highlight_value:
+                plot_kwargs["highlight_value"] = plots.format_survey_data_for_plotting(mini_survey, column).iloc[0]
+                plot_kwargs["highlight_color"] = "red"
+
             fig = plots.plot_single(
-                None, data[column], column, plot_kwargs={"nbins": 10}, return_fig=True
+                None,
+                formatted_data,
+                column,
+                plot_kwargs=plot_kwargs,
+                zoom_to_fit_categories=True,
+                return_fig=True,
             )
             buf = io.BytesIO()
             fig.write_image(buf, format="png")
@@ -211,9 +230,10 @@ def main(csv_file_path: str, dataset: str) -> None:
     survey = _get_survey_with_emails(survey, csv_file_path)
 
     for email in survey.data["Email"].dropna():
-        images = _get_plot_images(survey)
+        images = _get_plot_images(survey, email)
         pdf_bytes = _create_pdf(images)
         _create_email(pdf_bytes, email)
+        break
 
 
 if __name__ == "__main__":

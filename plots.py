@@ -220,7 +220,7 @@ def plot_single(
     data: pd.Series,
     series_name: str,
     plot_type: str = "histogram",
-    plot_kwargs: Dict = {},
+    plot_kwargs: dict = {},
     zoom_to_fit_categories: bool = False,
     return_fig: bool = False,
 ) -> None:
@@ -231,25 +231,56 @@ def plot_single(
         data: The data to be plotted.
         series_name: The name of the series to be displayed.
         plot_type: The type of plot to display (e.g., 'histogram', 'pie').
-        plot_kwargs: Additional keyword arguments for the plot.
+        plot_kwargs: Additional keyword arguments for the plot including options for highlighting.
         zoom_to_fit_categories: Whether to zoom to fit categories for the plot in order to make empty categories visible.
         return_fig: Whether to return the Plotly figure object.
     """
     fig = None
 
     if plot_type in ["histogram-categorized", "histogram"]:
+        highlight_value = plot_kwargs.pop("highlight_value", None)
+        if highlight_value is not None and isinstance(highlight_value, (int, float)):
+            highlight_value = f"{highlight_value:.2f}"
+        highlight_color = plot_kwargs.pop("highlight_color", "red")
         fig_kwargs = {"histnorm": "percent"}
         fig_kwargs.update(plot_kwargs)
+
         if isinstance(data.dtype, pd.CategoricalDtype):
             data_counts = data.value_counts().reindex(data.cat.categories, fill_value=0)
             x_values = data_counts.index.tolist()
             y_values = data_counts.values
+
             fig = px.histogram(x=x_values, y=y_values, **fig_kwargs)
-            if zoom_to_fit_categories:  # make empty categories visible as well
+
+            if highlight_value is not None and highlight_value in x_values:
+                fig.add_annotation(
+                    x=highlight_value,
+                    y=0,
+                    text=f"You",
+                    showarrow=True,
+                    arrowhead=1,
+                    ax=0,
+                    ay=-0,
+                    bgcolor=highlight_color,
+                    font=dict(color="white"),
+                )
+            if zoom_to_fit_categories:  # Make empty categories visible as well
                 num_categories = len(x_values)
                 fig.update_xaxes(range=[-0.5, num_categories - 0.5])
-        else:  # this was needed for other histogram types like Age for example
+        else:
             fig = px.histogram(data, **fig_kwargs)
+            if highlight_value is not None:
+                fig.add_annotation(
+                    x=highlight_value,
+                    y=0,
+                    text=f"You: {highlight_value}",
+                    showarrow=True,
+                    arrowhead=1,
+                    ax=0,
+                    ay=0,
+                    bgcolor=highlight_color,
+                    font=dict(color="white"),
+                )
         fig.update_layout(bargap=0.2, showlegend=False)
     elif plot_type in ["pie-categorized", "pie"]:
         fig = px.pie(data, names=series_name, **plot_kwargs)
