@@ -6,12 +6,12 @@ from scipy.stats import pearsonr, mannwhitneyu
 import scipy.stats as stats
 from constants import (
     SCORING_MAPPING,
+    PREDICTIONS_MAPPING,
     BIG_FIVE_CATEGORIES,
     MORAL_FOUNDATIONS_CATEGORIES,
     BIG_FIVE_COLUMNS,
     MORAL_FOUNDATIONS_COLUMNS,
     FLIPPED_DELAY_DISCOUNTING_SCORES,
-    K_VALUES,
     PREDICTIONS,
 )
 from survey import Survey
@@ -62,12 +62,15 @@ def display_individual_vs_community_plot(
         return_fig=True,
     )
 
+    individual_data = format_survey_data_for_statistics(survey, individual_q)
+    community_data = format_survey_data_for_statistics(survey, community_q)
+
     if (
         show_descriptive_stats
-        and pd.to_numeric(survey.data[individual_q], errors="coerce").notnull().all()
+        and pd.to_numeric(individual_data, errors="coerce").notnull().all()
     ):
-        survey_data = survey.data[individual_q].dropna()
-        comparison_data = survey.data[community_q].dropna()
+        survey_data = individual_data.dropna()
+        comparison_data = community_data.dropna()
 
         mean1, std1 = survey_data.mean(), survey_data.std()
         mean2, std2 = comparison_data.mean(), comparison_data.std()
@@ -86,7 +89,7 @@ def display_individual_vs_community_plot(
             xref="paper",
             yref="paper",
             x=0.5,
-            y=-0.5,
+            y=-0.55,
             showarrow=False,
             text=stats_text,
             align="left",
@@ -230,6 +233,28 @@ def format_survey_data_for_plotting(survey, selected_column) -> pd.Series:
 
     if is_comma_separated:
         data = data.str.split(",").explode().str.strip()
+
+    return data
+
+
+def format_survey_data_for_statistics(survey, selected_column) -> pd.Series:
+    """Converts some survey data to numeric for statistical analysis.
+
+    Args:
+        survey: The survey data to be formatted.
+        selected_column: The column for which the data is to be formatted.
+
+
+    Returns:
+        The formatted data for the plot.
+    """
+    data = survey.data[selected_column]
+    is_prediction = selected_column in survey.get_prediction_columns()
+    plot_type = survey.get_plot_type(selected_column, "histogram")
+    is_comma_separated = plot_type in ["histogram-categorized", "pie-categorized"]
+
+    if is_prediction:
+        data = data.replace({v: k for k, v in PREDICTIONS_MAPPING.items()})
 
     return data
 
@@ -504,13 +529,15 @@ def display_side_by_side_plot(
         return_fig=True,
     )
 
+    survey_data = format_survey_data_for_statistics(survey, column_key).dropna()
+    comparison_data = format_survey_data_for_statistics(
+        comparison_survey, column_key
+    ).dropna()
+
     if (
         show_descriptive_stats
-        and pd.to_numeric(survey.data[column_key], errors="coerce").notnull().all()
+        and pd.to_numeric(survey_data, errors="coerce").notnull().all()
     ):
-        survey_data = survey.data[column_key].dropna()
-        comparison_data = comparison_survey.data[column_key].dropna()
-
         mean1, std1 = survey_data.mean(), survey_data.std()
         mean2, std2 = comparison_data.mean(), comparison_data.std()
 
