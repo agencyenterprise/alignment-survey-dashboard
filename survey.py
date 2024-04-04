@@ -234,7 +234,6 @@ class Survey:
             numeric_data[col] = self.get_category_data_distribution(category_cols)
 
         numeric_data["k-value"] = self.get_k_values()
-
         return numeric_data
 
     def get_k_values(self):

@@ -3,7 +3,6 @@ from filter_dataframe import filter_dataframe
 from survey import Survey, concat as concat_surveys
 import plots
 import streamlit as st
-import numpy as np
 import pandas as pd
 from typing import List, Dict, Optional, Callable
 from langchain_community.chat_models import ChatOpenAI
@@ -11,7 +10,7 @@ from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain.agents.agent_types import AgentType
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.metrics import mean_squared_error, accuracy_score
+from sklearn.metrics import accuracy_score, r2_score
 from constants import (
     QUESTION_PAIRS,
     BIG_FIVE_CATEGORIES,
@@ -413,14 +412,16 @@ def display_regression_analysis(st, survey: Survey, key_suffix: str) -> None:
 
     regression_data = survey.get_numeric_data()
 
+    xy_columns = [col for col in regression_data.columns if col not in ["k-value"]]
+
     target_column = st.selectbox(
         "Select Target Column",
-        options=regression_data.columns,
+        options=xy_columns,
         key=f"target_column_{key_suffix}",
     )
     feature_columns = st.multiselect(
         "Select Feature Columns",
-        options=regression_data.columns,
+        options=xy_columns,
         key=f"feature_columns_{key_suffix}",
     )
 
@@ -431,7 +432,7 @@ def display_regression_analysis(st, survey: Survey, key_suffix: str) -> None:
     X = regression_data[feature_columns]
     y = regression_data[target_column]
 
-    if y.dtype == "object" or len(y.unique()) < 10:
+    if y.dtype == "object" or len(y.unique()) < 6:
         model = LogisticRegression(max_iter=1000)
         is_regression = False
     else:
@@ -445,8 +446,8 @@ def display_regression_analysis(st, survey: Survey, key_suffix: str) -> None:
     model.fit(X_train, y_train)
     predictions = model.predict(X_test)
     if is_regression:
-        accuracy = np.sqrt(mean_squared_error(y_test, predictions))
-        st.write(f"Root Mean Squared Error: {accuracy}")
+        r2 = r2_score(y_test, predictions)
+        st.write(f"R² Score: {r2}")
     else:
         accuracy = accuracy_score(y_test, predictions, normalize=True)
         st.write(f"Accuracy score: {accuracy}")
