@@ -434,10 +434,10 @@ def display_regression_analysis(st, survey: Survey, key_suffix: str) -> None:
 
     if y.dtype == "object" or len(y.unique()) < 6:
         model = LogisticRegression(max_iter=1000)
-        is_regression = False
+        is_linear_regression = False
     else:
         model = LinearRegression()
-        is_regression = True
+        is_linear_regression = True
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
@@ -445,7 +445,7 @@ def display_regression_analysis(st, survey: Survey, key_suffix: str) -> None:
 
     model.fit(X_train, y_train)
     predictions = model.predict(X_test)
-    if is_regression:
+    if is_linear_regression:
         r2 = r2_score(y_test, predictions)
         st.write(f"R² Score: {r2}")
     else:
