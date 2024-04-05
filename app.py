@@ -228,10 +228,16 @@ def display_side_by_side_analysis(
                     comparison_survey,
                     datasource,
                     comparison_datasource,
+                    show_descriptive_stats=show_descriptive_stats,
                 )
             elif graph.endswith(" k Values (lower = less future discounting)"):
                 plots.display_delay_discounting_k_values(
-                    st, survey, comparison_survey, datasource, comparison_datasource
+                    st,
+                    survey,
+                    comparison_survey,
+                    datasource,
+                    comparison_datasource,
+                    show_descriptive_stats=show_descriptive_stats,
                 )
         else:
             selected_column_key = next(

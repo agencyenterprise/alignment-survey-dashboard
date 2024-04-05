@@ -406,7 +406,7 @@ def display_correlation_plot(
     st.plotly_chart(fig)
 
 
-def split_text(text, max_length=100):
+def split_text(text, max_length=95):
     """Splits text into multiple lines if longer than max_length, trying to break at spaces."""
     if len(text) <= max_length:
         return text
@@ -546,8 +546,8 @@ def display_side_by_side_plot(
         )
 
         stats_text = (
-            f"{format_applied_filters(datasource, survey.applied_filters, max_words=100)} Mean: {mean1:.2f}, Std. Dev.: {std1:.2f}<br>"
-            f"{format_applied_filters(comparison_datasource, comparison_survey.applied_filters, max_words=100)} Mean: {mean2:.2f}, Std. Dev.: {std2:.2f}<br>"
+            f"{format_applied_filters(datasource, survey.applied_filters, max_words=95)} Mean: {mean1:.2f}, Std. Dev.: {std1:.2f}<br>"
+            f"{format_applied_filters(comparison_datasource, comparison_survey.applied_filters, max_words=95)} Mean: {mean2:.2f}, Std. Dev.: {std2:.2f}<br>"
             f"Mann-Whitney U: {u_stat}, p-value: {p_value:.4f}"
         )
 
@@ -685,8 +685,8 @@ def display_side_by_side_grouped_distribution_plot(
         )
 
         stats_text = (
-            f"{format_applied_filters(datasource, survey.applied_filters, max_words=100)} Mean: {mean1:.2f}, Std. Dev.: {std1:.2f}<br>"
-            f"{format_applied_filters(comparison_datasource, comparison_survey.applied_filters, max_words=100)} Mean: {mean2:.2f}, Std. Dev.: {std2:.2f}<br>"
+            f"{format_applied_filters(datasource, survey.applied_filters, max_words=95)} Mean: {mean1:.2f}, Std. Dev.: {std1:.2f}<br>"
+            f"{format_applied_filters(comparison_datasource, comparison_survey.applied_filters, max_words=95)} Mean: {mean2:.2f}, Std. Dev.: {std2:.2f}<br>"
             f"Mann-Whitney U: {u_stat}, p-value: {p_value:.4f}"
         )
 
@@ -714,6 +714,7 @@ def display_delay_discounting_variance(
     comparison_survey: Survey = None,
     datasource=None,
     comparison_datasource=None,
+    show_descriptive_stats=False,
 ) -> None:
     """Displays a histogram plot of the variance in delay discounting responses within the survey data.
 
@@ -723,6 +724,7 @@ def display_delay_discounting_variance(
         comparison_survey: An optional second Survey instance for comparison.
         datasource: The name of the first data source.
         comparison_datasource: The name of the second data source.
+        show_descriptive_stats: Whether to display descriptive statistics for the data.
     """
 
     def get_variance_values(df, dd_columns):
@@ -742,14 +744,46 @@ def display_delay_discounting_variance(
     dd_variance = get_variance_values(survey.data, dd_columns)
     if comparison_survey:
         comparison_dd_variance = get_variance_values(comparison_survey.data, dd_columns)
-        plot_side_by_side(
+        fig = plot_side_by_side(
             st,
             "Distribution of Variance in Delay Discounting",
             dd_variance,
             datasource or "A",
             comparison_dd_variance,
             comparison_datasource or "B",
+            return_fig=True,
         )
+
+        if show_descriptive_stats:
+            mean1, std1 = dd_variance.mean(), dd_variance.std()
+            mean2, std2 = comparison_dd_variance.mean(), comparison_dd_variance.std()
+
+            u_stat, p_value = mannwhitneyu(
+                dd_variance, comparison_dd_variance, alternative="two-sided"
+            )
+
+            stats_text = (
+                f"{format_applied_filters(datasource, survey.applied_filters, max_words=95)} Mean: {mean1:.2f}, Std. Dev.: {std1:.2f}<br>"
+                f"{format_applied_filters(comparison_datasource, comparison_survey.applied_filters, max_words=95)} Mean: {mean2:.2f}, Std. Dev.: {std2:.2f}<br>"
+                f"Mann-Whitney U: {u_stat}, p-value: {p_value:.4f}"
+            )
+
+            fig.add_annotation(
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=-0.5,
+                showarrow=False,
+                text=stats_text,
+                align="left",
+                font=dict(size=12),
+                borderwidth=1,
+                borderpad=4,
+            )
+
+            fig.update_layout(margin=dict(b=120))
+
+        st.plotly_chart(fig, use_container_width=True)
     else:
         plot_single(
             st,
@@ -765,6 +799,7 @@ def display_delay_discounting_k_values(
     comparison_survey: Survey = None,
     datasource=None,
     comparison_datasource=None,
+    show_descriptive_stats=False,
 ) -> None:
     """Displays a histogram plot of the k values in delay discounting responses within the survey data.
 
@@ -774,19 +809,52 @@ def display_delay_discounting_k_values(
         comparison_survey: An optional second Survey instance for comparison.
         datasource: The name of the first data source.
         comparison_datasource: The name of the second data source.
+        show_descriptive_stats: Whether to display descriptive statistics for the data.
     """
 
     k_values = survey.get_k_values()
     if comparison_survey:
         comparison_k_values = comparison_survey.get_k_values()
-        plot_side_by_side(
+        fig = plot_side_by_side(
             st,
             "Distribution of k Values in Delay Discounting Responses",
             k_values,
             datasource or "A",
             comparison_k_values,
             comparison_datasource or "B",
+            return_fig=True,
         )
+
+        if show_descriptive_stats:
+            mean1, std1 = k_values.mean(), k_values.std()
+            mean2, std2 = comparison_k_values.mean(), comparison_k_values.std()
+
+            u_stat, p_value = mannwhitneyu(
+                k_values, comparison_k_values, alternative="two-sided"
+            )
+
+            stats_text = (
+                f"{format_applied_filters(datasource, survey.applied_filters, max_words=95)} Mean: {mean1:.2f}, Std. Dev.: {std1:.2f}<br>"
+                f"{format_applied_filters(comparison_datasource, comparison_survey.applied_filters, max_words=95)} Mean: {mean2:.2f}, Std. Dev.: {std2:.2f}<br>"
+                f"Mann-Whitney U: {u_stat}, p-value: {p_value:.4f}"
+            )
+
+            fig.add_annotation(
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=-0.5,
+                showarrow=False,
+                text=stats_text,
+                align="left",
+                font=dict(size=12),
+                borderwidth=1,
+                borderpad=4,
+            )
+
+            fig.update_layout(margin=dict(b=120))
+
+        st.plotly_chart(fig, use_container_width=True)
     else:
         plot_single(
             st,
