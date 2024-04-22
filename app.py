@@ -573,7 +573,9 @@ def handle_gpt4_query(dataframes: List[pd.DataFrame], st) -> None:
 def main() -> None:
     """The main function to run the Streamlit application."""
     st.set_page_config(page_title="Data Analysis Dashboard")
+    st.title("Survey dashboard tool")
     analysis_state = st.radio("Dataset", [state.value for state in DatasetType])
+    st.markdown("""---""")
 
     if analysis_state in [
         DatasetType.ALIGNMENT.value,
