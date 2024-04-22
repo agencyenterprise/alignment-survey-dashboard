@@ -561,11 +561,11 @@ def handle_gpt4_query(dataframes: List[pd.DataFrame], st) -> None:
     """
     query_placeholder = st.empty()
     query_text = query_placeholder.text_input(
-        "Enter a query to be answered by GPT-4:",
+        "Enter a query about either dataset to be answered by GPT-4:",
         value=st.session_state.get("query_text", ""),
     )
     if query_text:
-        with st.spinner("Running query..."):
+        with st.spinner("Running query, please standby..."):
             response = generate_response(dataframes, query_text)
         st.write("GPT-4:", response)
 
