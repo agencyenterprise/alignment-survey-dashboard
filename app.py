@@ -30,13 +30,12 @@ class DatasetType(Enum):
 class AnalysisType(Enum):
     """Enum to represent the type of dataset being analyzed."""
 
-    RAW = "Raw Distribution"
-    GROUPED = "Grouped Distribution"
-    INDIVIDUAL_VS_GROUP = "Ground truth vs. predictions"
-    CORRELATION = "Correlation"
-    MISCELLANEOUS = "Miscellaneous"
-    REGRESSION = "Regression"
-
+    RAW = "Individual question distributions"
+    GROUPED = "Scale-level distributions"
+    INDIVIDUAL_VS_GROUP = "Ground truth vs. predictions of community views"
+    CORRELATION = "Correlational analysis"
+    MISCELLANEOUS = "Miscellaneous plots"
+    REGRESSION = "Classification/regression"
 
 MISC_GRAPH_TYPES: Dict[str, Callable] = {
     "Mean Scores for Big Five Traits with Std. Dev.": plots.display_group_mean_std_graph,
@@ -46,7 +45,6 @@ MISC_GRAPH_TYPES: Dict[str, Callable] = {
     "Distribution of Variance in Delay Discounting Responses": plots.display_delay_discounting_variance,
     "Distribution of k Values (lower = less future discounting)": plots.display_delay_discounting_k_values,
 }
-
 
 def select_all_callback(key_suffix: str, options: List[str]) -> Callable:
     """Returns a callback function that selects all options in a multi-select widget.
