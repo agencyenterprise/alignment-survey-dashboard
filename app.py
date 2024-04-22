@@ -589,6 +589,7 @@ def main() -> None:
         )
         survey = get_survey(survey_name)
         display_standard_analysis(survey, analysis_state, st=st, key_suffix="")
+        st.markdown("""---""")
 
     elif analysis_state == DatasetType.SIDE_BY_SIDE.value:
         choices = ["Alignment", "EA", "Combined"]
