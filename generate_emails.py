@@ -233,7 +233,6 @@ def main(csv_file_path: str, dataset: str) -> None:
         images = _get_plot_images(survey, email)
         pdf_bytes = _create_pdf(images)
         _create_email(pdf_bytes, email)
-        break
 
 
 if __name__ == "__main__":
