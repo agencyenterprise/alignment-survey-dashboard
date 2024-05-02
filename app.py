@@ -571,8 +571,8 @@ def handle_gpt4_query(dataframes: List[pd.DataFrame], st) -> None:
 def main() -> None:
     """The main function to run the Streamlit application."""
     st.set_page_config(page_title="Data Analysis Dashboard", page_icon='ae.png')
-    st.title("Survey dashboard tool")
-    st.markdown(f"## Data analysis tool for [Key takeaways from our EA and alignment research surveys]({'https://www.lesswrong.com/posts/XTdByFM6cmgB3taEN/key-takeaways-from-our-ea-and-alignment-research-surveys'})")
+    st.title("Alignment and EA survey dashboard")
+    st.markdown(f"### Data analysis tool associated with [Key takeaways from our EA and alignment research surveys]({'https://www.lesswrong.com/posts/XTdByFM6cmgB3taEN/key-takeaways-from-our-ea-and-alignment-research-surveys'})")
     st.write("**How to use:** First, select the dataset(s) you are interested in exploring. Select 'side by side' if you are interested in comparing the EA and alignment samples OR two subsamples within the same community. Next, you can filter the dataset(s) as desired, select the analysis type, and choose the desired plots to display from that analysis type. Click 'Select All' to see all of the plots that are a part of that analysis type. If you have additional questions about either dataset, simply enter them below and GPT4 will attempt to answer your query.")  
     analysis_state = st.radio("Dataset", [state.value for state in DatasetType])
     st.markdown("""---""")
