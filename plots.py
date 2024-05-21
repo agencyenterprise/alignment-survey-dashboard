@@ -953,6 +953,8 @@ def calculate_category_statistics(
             category_stats[category] = {"scores": [], "names": []}
         try:
             numeric_col = pd.to_numeric(survey.data[col], errors="coerce")
+            if survey.get_scoring(col) == "reverse":
+                numeric_col = numeric_col.apply(lambda x: 6 - x)
             category_stats[category]["scores"].append(numeric_col)
             category_stats[category]["names"].append(numeric_col)
         except Exception as e:
