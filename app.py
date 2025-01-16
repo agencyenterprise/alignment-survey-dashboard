@@ -544,7 +544,7 @@ def generate_response(dataframes: List[pd.DataFrame], input_query: str) -> str:
         temperature=0.2,
     )
     agent = create_pandas_dataframe_agent(
-        llm, dataframes, verbose=True, agent_type=AgentType.OPENAI_FUNCTIONS
+        llm, dataframes, verbose=True, agent_type=AgentType.OPENAI_FUNCTIONS, allow_dangerous_code=True
     )
     response = agent.run(input_query)
     return response
